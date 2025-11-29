@@ -1,0 +1,14 @@
+/* Reset REAL de márgenes y scroll */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden; /* Previene scroll horizontal fantasma */
+}
+
+/* Asegura el box-sizing global */
+*, *::before, *::after {
+  box-sizing: inherit;
+}
