@@ -4,15 +4,15 @@ const theme = createTheme({
   // Paleta de Colores (Tu configuración original)
   palette: {
     primary: {
-      main: '#f64922ff', 
-      light: '#f95b37ff', 
-      dark: '#fe2f00ff',                      
-      contrastText: '#FFFBFC',
+      main: '#60d3e2ff', 
+      light: '#9de4faff', 
+      dark: '#155580ff',                      
+      contrastText: '#1b1b1bff',
     },
     secondary: {
-      main: '#880044', 
-      light: '#e30876ff', 
-      dark: '#5d0330ff',                      
+      main: '#dd854bff', 
+      light: '#f7a57fff', 
+      dark: '#9e651bff',                      
       contrastText: '#FFFBFC',
     },
     contrast: {
