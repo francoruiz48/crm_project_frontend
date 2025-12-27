@@ -9,12 +9,10 @@ import {
   Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { Outlet } from 'react-router-dom';
 
-interface MainLayoutProps {
-  children: React.ReactNode;
-}
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+const MainLayout: React.FC = () => {
   const theme = useTheme();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -51,8 +49,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <Box sx={{ p: 2 }}>
           <Typography variant="h6">Menú</Typography>
           <List>
-            <ListItem button><ListItemText primary="Elemento 1" /></ListItem>
-            <ListItem button><ListItemText primary="Elemento 2" /></ListItem>
+            <ListItem ><ListItemText primary="Elemento 1" /></ListItem>
+            <ListItem ><ListItemText primary="Elemento 2" /></ListItem>
           </List>
         </Box>
       </Drawer>
@@ -82,7 +80,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               Contenido Principal
             </Typography>
 
-            {children}
+            <Outlet />
           </Box>
 
           {/* Columna Derecha */}
