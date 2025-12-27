@@ -4,12 +4,16 @@ import WorkIcon from '@mui/icons-material/Work';
 import SsidChartIcon from '@mui/icons-material/SsidChart';
 import SettingsIcon from '@mui/icons-material/Settings';
 
-export const Navbar = ({ open }) => {
+interface NavbarProps {
+  open: boolean
+}
+
+export const Navbar = ({ open }: NavbarProps) => {
   const options = [
-    { name: "Leads", icon: <PersonIcon/> },
-    { name: "Campañas", icon: <WorkIcon/> },
-    { name: "Reportes", icon: <SsidChartIcon/> },
-    { name: "Personalizaciones", icon: <SettingsIcon/> },
+    { name: "Leads", icon: <PersonIcon /> },
+    { name: "Campañas", icon: <WorkIcon /> },
+    { name: "Reportes", icon: <SsidChartIcon /> },
+    { name: "Personalizaciones", icon: <SettingsIcon /> },
 
   ]
   return (

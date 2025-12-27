@@ -13,8 +13,8 @@ import MailIcon from '@mui/icons-material/Mail';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import MoreIcon from '@mui/icons-material/MoreVert';
 import MuiAppBar, { type AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
-import { drawerWidth } from '../mainLayout';
 import { HeaderSearchBar } from './HeaderSearchBar';
+import { drawerWidth } from './Sidebar';
 
 interface AppBarProps extends MuiAppBarProps {
   open?: boolean;
