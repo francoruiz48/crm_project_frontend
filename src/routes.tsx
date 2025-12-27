@@ -12,6 +12,10 @@ export const router = createBrowserRouter([
         element: <div className="">Signup</div>,
     },
     {
+        path: "/signup",
+        element: <div className="">Signup</div>,
+    },
+    {
         //Layout principal
         path: "/",
         Component: MainLayout,

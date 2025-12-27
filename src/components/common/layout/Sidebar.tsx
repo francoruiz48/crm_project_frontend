@@ -4,8 +4,8 @@ import { styled, useTheme, type CSSObject, type Theme } from "@mui/material/styl
 import MuiDrawer from '@mui/material/Drawer';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import Header from "./header";
-import { Navbar } from "./navbar";
+import Header from "./Header";
+import { Navbar } from "./Navbar";
 
 export const drawerWidth = 240;
 
@@ -47,7 +47,9 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' 
         flexShrink: 0,
         whiteSpace: 'nowrap',
         boxSizing: 'border-box',
-        '& .MuiDrawer-paper': { backgroundColor: theme.palette.primary.main },
+        '& .MuiDrawer-paper': { 
+            backgroundColor: theme.palette.primary.main,
+         },
         variants: [
             {
                 props: ({ open }) => open,
@@ -66,6 +68,8 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' 
         ],
     }),
 );
+
+/************************************ Componente ****************************************/
 
 interface SidebarProps {
     children?: ReactNode
