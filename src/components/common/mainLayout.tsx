@@ -131,7 +131,7 @@ export default function MainLayout({ children }) {
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <DrawerHeader />
-        {children}
+        <Outlet />
       </Box>
     </Box>
   );
