@@ -4,26 +4,16 @@ const theme = createTheme({
   // Paleta de Colores (Tu configuración original)
   palette: {
     primary: {
-      main: '#e26060ff', 
-      light: '#fa9d9dff', 
-      dark: '#801515ff',                      
-      contrastText: '#1b1b1bff',
+      main: '#5A7ACD', 
     },
     secondary: {
-      main: '#dd854bff', 
-      light: '#f7a57fff', 
-      dark: '#9e651bff',                      
-      contrastText: '#FFFBFC',
+      main: '#FEB05D', 
     },
     contrast: {
-      main: '#000000',
-      light: '#333333',
-      dark: '#000000',
-      contrastText: '#FFFFFF',
-    }
-    ,
+      main: '#2B2A2A',
+    },
     background: {
-      default: '#f8f9fa', 
+      default: '#F5F2F2', 
       paper: '#ffffff', 
     },
   },
