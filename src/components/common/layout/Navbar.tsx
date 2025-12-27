@@ -1,4 +1,4 @@
-import { ListItem, ListItemButton, ListItemIcon, ListItemText } from '@mui/material'
+import { List, ListItem, ListItemButton, ListItemIcon, ListItemText } from '@mui/material'
 import PersonIcon from '@mui/icons-material/Person';
 import WorkIcon from '@mui/icons-material/Work';
 import SsidChartIcon from '@mui/icons-material/SsidChart';
@@ -14,60 +14,35 @@ export const Navbar = ({ open }: NavbarProps) => {
     { name: "Campañas", icon: <WorkIcon /> },
     { name: "Reportes", icon: <SsidChartIcon /> },
     { name: "Personalizaciones", icon: <SettingsIcon /> },
-
   ]
+
   return (
-    <>
+    <List>
       {options?.map((item) => (
         <ListItem key={item.name} disablePadding sx={{ display: 'block' }}>
           <ListItemButton
             sx={[
-              {
-                minHeight: 48,
-                px: 2.5,
-              },
-              open
-                ? {
-                  justifyContent: 'initial',
-                }
-                : {
-                  justifyContent: 'center',
-                },
+              { minHeight: 48, px: 2.5, },
+              open ? { justifyContent: 'initial', } : { justifyContent: 'center', },
             ]}
           >
             <ListItemIcon
               sx={[
-                {
-                  minWidth: 0,
-                  justifyContent: 'center',
-                },
-                open
-                  ? {
-                    mr: 3,
-                  }
-                  : {
-                    mr: 'auto',
-                  },
+                { minWidth: 0, justifyContent: 'center', },
+                open ? { mr: 3, } : { mr: 'auto', },
               ]}
             >
               {item.icon}
             </ListItemIcon>
             <ListItemText
               primary={item.name}
-              sx={[
-                open
-                  ? {
-                    opacity: 1,
-                  }
-                  : {
-                    opacity: 0,
-                  },
+              sx={[ open ? { opacity: 1, } : { opacity: 0, },
               ]}
             />
           </ListItemButton>
         </ListItem>
 
       ))}
-    </>
+    </List>
   )
 }

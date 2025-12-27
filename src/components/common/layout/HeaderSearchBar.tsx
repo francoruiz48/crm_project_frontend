@@ -5,9 +5,9 @@ import SearchIcon from '@mui/icons-material/Search';
 const Search = styled('div')(({ theme }) => ({
     position: 'relative',
     borderRadius: theme.shape.borderRadius,
-    backgroundColor: alpha(theme.palette.common.white, 0.25),
+    backgroundColor: alpha(theme.palette.common.white, 0.2),
     '&:hover': {
-        backgroundColor: alpha(theme.palette.common.white, 0.3),
+        backgroundColor: alpha(theme.palette.common.white, 0.25),
     },
     marginRight: theme.spacing(2),
     marginLeft: 0,
@@ -47,7 +47,7 @@ export const HeaderSearchBar = () => {
     return (
         <>
             <Box sx={{ flexGrow: 1 }} />
-            <Search>
+            <Search sx={{ flexGrow: 1 }} >
                 <SearchIconWrapper>
                     <SearchIcon />
                 </SearchIconWrapper>

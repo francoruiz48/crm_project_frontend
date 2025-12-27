@@ -1,14 +1,15 @@
-import { Box, CssBaseline, Divider, IconButton, List } from "@mui/material";
-import { styled, useTheme, type CSSObject, type Theme } from "@mui/material/styles";
 import React, { type ReactNode } from "react";
-import Header from "./header";
-import { Navbar } from "../navbar";
+import { Box, Divider, IconButton } from "@mui/material";
+import { styled, useTheme, type CSSObject, type Theme } from "@mui/material/styles";
 import MuiDrawer from '@mui/material/Drawer';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import Header from "./header";
+import { Navbar } from "./navbar";
 
 export const drawerWidth = 240;
 
+/************************************ Transición de apertura y cierre ****************************************/
 const openedMixin = (theme: Theme): CSSObject => ({
     width: drawerWidth,
     transition: theme.transitions.create('width', {
@@ -31,6 +32,7 @@ const closedMixin = (theme: Theme): CSSObject => ({
 });
 
 const DrawerHeader = styled('div')(({ theme }) => ({
+    backgroundColor: theme.palette.primary.main,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'flex-end',
@@ -39,13 +41,13 @@ const DrawerHeader = styled('div')(({ theme }) => ({
     ...theme.mixins.toolbar,
 }));
 
-
 const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' })(
     ({ theme }) => ({
         width: drawerWidth,
         flexShrink: 0,
         whiteSpace: 'nowrap',
         boxSizing: 'border-box',
+        '& .MuiDrawer-paper': { backgroundColor: theme.palette.primary.main },
         variants: [
             {
                 props: ({ open }) => open,
@@ -83,7 +85,6 @@ export default function Sidebar({ children }: SidebarProps) {
 
     return (
         <Box sx={{ display: 'flex' }}>
-            <CssBaseline />
             <Header handleDrawerOpen={handleDrawerOpen} open={open} />
             <Drawer variant="permanent" open={open} >
                 <DrawerHeader>
@@ -92,12 +93,10 @@ export default function Sidebar({ children }: SidebarProps) {
                     </IconButton>
                 </DrawerHeader>
                 <Divider />
-                <List>
-                    <Navbar open={open} />
-                </List>
+                <Navbar open={open} />
             </Drawer>
             <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-                <DrawerHeader />
+                <DrawerHeader sx={{ backgroundColor: theme.palette.background.default }} />
                 {children}
             </Box>
         </Box>
