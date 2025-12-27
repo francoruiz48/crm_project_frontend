@@ -14,7 +14,7 @@ export const Navbar = ({ open }) => {
   ]
   return (
     <>
-      {options?.map((item, index) => (
+      {options?.map((item) => (
         <ListItem key={item.name} disablePadding sx={{ display: 'block' }}>
           <ListItemButton
             sx={[

@@ -10,7 +10,7 @@ export const router = createBrowserRouter([
             //Rutas dentro del layout
             {
                 path:"/",
-                element: <div>Home Test</div>
+                element: <div>Home Test!</div>
             }
         ]
     }

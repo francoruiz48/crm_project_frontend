@@ -10,7 +10,8 @@ import IconButton from '@mui/material/IconButton';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import Header from './header';
-import { Navbar } from './Navbar';
+import { Navbar } from './navbar';
+import { Outlet } from 'react-router-dom';
 
 const drawerWidth = 240;
 
@@ -96,7 +97,7 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' 
   }),
 );
 
-export default function MainLayout({ children }) {
+export default function MainLayout() {
   const theme = useTheme();
   const [open, setOpen] = React.useState(false);
 
@@ -123,10 +124,6 @@ export default function MainLayout({ children }) {
         <Divider />
         <List>
           <Navbar open={open} />
-        </List>
-        <Divider />
-        <List>
-
         </List>
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
