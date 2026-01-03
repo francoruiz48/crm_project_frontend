@@ -27,32 +27,32 @@ const theme = createTheme({
       'sans-serif',
     ].join(','),
     h1: {
-      fontSize: '2em',
+      fontSize: '2.5em',
       fontWeight: 700,
       paddingBlock:'.5em'
     },
     h2: {
-      fontSize: '1.5em',
+      fontSize: '1.7em',
       fontWeight: 700,
       paddingBlock:'.5em'
     },
     h3: {
-      fontSize: '1.17em',
+      fontSize: '1.37em',
       fontWeight: 700,
       paddingBlock:'.5em'
     },
     h4: {
-      fontSize: '1em',
+      fontSize: '1.2em',
       fontWeight: 700,
       paddingBlock:'.5em'
     },
     h5: {
-      fontSize: '0.83em',
+      fontSize: '1.03em',
       fontWeight: 700,
       paddingBlock:'.5em'
     },
     h6: {
-      fontSize: '0.67rem',
+      fontSize: '0.87rem',
       fontWeight: 700,
       paddingBlock:'.5em'
     },
