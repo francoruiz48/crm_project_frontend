@@ -88,9 +88,9 @@ export default function Sidebar({ children }: SidebarProps) {
     };
 
     return (
-        <Box sx={{ display: 'flex' }}>
+        <>
             <Header handleDrawerOpen={handleDrawerOpen} open={open} />
-            <Drawer variant="permanent" open={open} >
+            <Drawer variant="permanent" open={open}>
                 <DrawerHeader>
                     <IconButton onClick={handleDrawerClose}>
                         {theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
@@ -103,6 +103,6 @@ export default function Sidebar({ children }: SidebarProps) {
                 <DrawerHeader sx={{ backgroundColor: theme.palette.background.default }} />
                 {children}
             </Box>
-        </Box>
+        </>
     );
 }
