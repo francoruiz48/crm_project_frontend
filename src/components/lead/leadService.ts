@@ -1,13 +1,14 @@
-import axios from 'axios';
-import { API_BASE_URL } from '../../generalService';
+//import axios from 'axios';
+//import { API_BASE_URL } from '../../generalService';
+import type { Lead } from '../../types/leads';
 
-export const getLead = async (id : number) : Promise<object> => {
+export const getLead = async (id : number) : Promise<Lead> => {
     //const lead = await axios.get(`${API_BASE_URL}/leads/${id}`)
     //return lead.data
     return leadMock[id-1]
 }
 
-const leadMock = [
+const leadMock : Lead[] = [
     {
         "id": 1,
         "created_at": "2025-12-30T19:13:35.601139Z",

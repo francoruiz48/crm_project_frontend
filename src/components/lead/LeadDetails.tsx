@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
 import { getLead } from "./leadService.ts"
-import { Box, Container, Divider, Grid, Paper, Typography } from "@mui/material"
+import { Container, Divider, Grid, Paper, Typography } from "@mui/material"
+import type { Lead } from "../../types/leads.ts"
 
 export const LeadDetails = () => {
 
     const { id } = useParams()
-    const [lead, setLead] = useState(null)
+    const [lead, setLead] = useState<Lead|null>(null)
 
     useEffect(() => {
         if (id) {
@@ -19,7 +20,7 @@ export const LeadDetails = () => {
     console.log(lead)
     return (
         <Container maxWidth='xl'>
-            <Grid container spacing={4}>
+            <Grid container spacing={3}>
                 <Grid size={4} >
                     <Paper sx={{minHeight:"100%", p:2}}>
                         <Typography variant="h2">{lead?.field_values[0].value}</Typography>

@@ -38,22 +38,22 @@ const theme = createTheme({
     },
     h3: {
       fontSize: '1.17em',
-      fontWeight: 500,
+      fontWeight: 700,
       paddingBlock:'.5em'
     },
     h4: {
       fontSize: '1em',
-      fontWeight: 500,
+      fontWeight: 700,
       paddingBlock:'.5em'
     },
     h5: {
       fontSize: '0.83em',
-      fontWeight: 400,
+      fontWeight: 700,
       paddingBlock:'.5em'
     },
     h6: {
       fontSize: '0.67rem',
-      fontWeight: 300,
+      fontWeight: 700,
       paddingBlock:'.5em'
     },
     button: {
