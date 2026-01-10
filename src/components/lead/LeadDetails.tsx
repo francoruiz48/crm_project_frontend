@@ -85,10 +85,10 @@ interface LeadFieldSectionsProps {
     fields: LeadFieldValue[]
 }
 
+//TO DO Optimizar componentes
 export const LeadFieldSections = ({ fields }: LeadFieldSectionsProps) => {
 
     const [leadSections, setLeadSections] = useState<LeadFieldSection[] | []>([])
-    console.log(leadSections)
 
     useEffect(() => {
         getLeadSections().then(setLeadSections)
