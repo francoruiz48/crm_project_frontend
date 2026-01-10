@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import MainLayout from "./components/common/mainLayout";
 import { NotFound } from "./pages/NotFound";
+import { LeadDetails } from "./components/lead/LeadDetails";
 
 export const router = createBrowserRouter([
     {
@@ -24,6 +25,10 @@ export const router = createBrowserRouter([
             {
                 path: "/",
                 element: <div>Home Test</div>
+            },
+            {
+                path: "/leads/:id",
+                Component: LeadDetails
             },
             {
                 path: "*", //Si no coincide con nada más.
