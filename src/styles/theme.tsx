@@ -27,7 +27,7 @@ const theme = createTheme({
       'sans-serif',
     ].join(','),
     h1: {
-      fontSize: '2.5em',
+      fontSize: '2em',
       fontWeight: 700,
       paddingBlock:'.5em'
     },

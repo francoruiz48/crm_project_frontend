@@ -35,6 +35,7 @@ export interface LeadField {
     "validation_rules": ValidationRule[],
     "nomenclator"?: Nomenclator | null,
     "campaign": Campaign
+    "lead_field_section": LeadFieldSection
 }
 
 export interface ValidationRule {
@@ -64,4 +65,9 @@ export interface Campaign {
     "active": boolean,
     "name": string,
     "description": string
+}
+
+export interface LeadFieldSection {
+    "id": number,
+    "name": string
 }
