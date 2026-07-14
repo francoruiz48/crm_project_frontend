@@ -141,7 +141,9 @@ export const changeStateLead = async (lead_id: number, state_id: number): Promis
 };
 
 export const changeContactStateLead = async (lead_id: number, state_id: number): Promise<LeadDetailed> => {
-  const body = { "contact_state_id": state_id }
-  const response = await axiosCRM.put(`leads/${lead_id}`, body);
+  // Antes usaba PUT /leads/{id} (el mismo que cualquier campo genérico) y no dejaba
+  // ningún rastro de auditoría. Ahora usa el endpoint dedicado, igual que changeStateLead.
+  const body = { "new_contact_state_id": state_id }
+  const response = await axiosCRM.post(`leads/${lead_id}/change_contact_state`, body);
   return response.data;
 };

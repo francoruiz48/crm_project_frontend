@@ -1,11 +1,13 @@
-import { Divider, List, ListItemButton, ListSubheader, Popover, Stack } from '@mui/material'
+import { Divider, List, ListItemButton, ListSubheader, Popover, Stack, TextField, Typography } from '@mui/material'
 import { useCallback, useEffect, useState } from 'react'
 import GenericPaper from 'src/components/layout/container/GenericPaper'
 import CustomChip from 'src/components/ui/details/CustomChip'
+import CommonButton from 'shared/ui/buttons/CommonButton'
+import { useLoading } from 'src/hooks/useLoading'
 import { getNextFlowState } from 'src/features/leadFlows/leadFlowServices/FlowService'
 import type { LeadContactState, LeadContactStateDetailed } from 'src/types/orgProperties'
 import type { LeadState, LeadStateDetailed } from 'src/types/leadFlow'
-import type { Lead, LeadDetailed } from 'src/types/leads'
+import type { LeadDetailed } from 'src/types/leads'
 import { changeContactState, changeFlowState } from './LeadDetailsService'
 import { showCommonErrorToast } from 'src/utils/feedback'
 import { getLeadContactStates } from 'src/features/orgProperties/contactState/contactStatesServices'
@@ -35,13 +37,11 @@ export const LeadDetailsState = ({ lead, contactState, flowState, updateLeadInfo
     const [flowAnchor, setFlowAnchor] = useState<Element | null>(null)
     const [contactAnchor, setContactAnchor] = useState<Element | null>(null)
 
-    const handleContactChange = useCallback((newLead: Lead) => {
-        const leadCopy = { ...lead }
-        leadCopy.contact_state = { ...lead.contact_state, ...newLead.contact_state }
-        leadCopy.contact_state_id = newLead.contact_state_id
-        updateLeadInfo(leadCopy)
-    }, [lead, updateLeadInfo])
-
+    // Ambos cambios ahora quedan registrados en el timeline de auditoría del lead,
+    // así que los dos disparan el reload del tab de Auditoría.
+    const handleContactChange = useCallback((newLead: LeadDetailed) => {
+        updateLeadInfo(newLead, true)
+    }, [updateLeadInfo])
 
     const handleFlowChange = useCallback((newLead: LeadDetailed) => {
         updateLeadInfo(newLead, true)
@@ -61,8 +61,8 @@ export const LeadDetailsState = ({ lead, contactState, flowState, updateLeadInfo
                         horizontal: 'left',
                     }}
                 >
-                    <FlowStateList leadId={lead.id} nextFlowStates={nextFlowStates}
-                        onClose={() => setFlowAnchor(null)} onChange={handleFlowChange} />
+                    <StateChangeList title="Actualizar Estado de Flujo" leadId={lead.id} options={nextFlowStates}
+                        onClose={() => setFlowAnchor(null)} onChange={handleFlowChange} submit={changeFlowState} />
                 </Popover>
             </>}
 
@@ -78,86 +78,85 @@ export const LeadDetailsState = ({ lead, contactState, flowState, updateLeadInfo
                         horizontal: 'left',
                     }}
                 >
-                    <ContactStateList leadId={lead.id} contactStates={contactStates}
-                        onClose={() => setContactAnchor(null)} onChange={handleContactChange} />
+                    <StateChangeList title="Actualizar Estado de Contacto" leadId={lead.id} options={contactStates}
+                        onClose={() => setContactAnchor(null)} onChange={handleContactChange} submit={changeContactState} />
                 </Popover>
             </>}
         </Stack>
     )
 }
 
-interface StateListProps {
+interface StateOption {
+    id: number,
+    name: string,
+    color?: string | null,
+}
+
+interface StateChangeListProps {
+    title: string,
     leadId: number,
-    onClose: () => void
+    options: StateOption[],
+    onClose: () => void,
+    onChange: (lead: LeadDetailed) => void,
+    submit: (leadId: number, stateId: number, notes?: string) => Promise<LeadDetailed>,
 }
 
-interface FlowStateListProps extends StateListProps {
-    nextFlowStates: LeadState[],
-    onChange: (lead: LeadDetailed) => void
-}
-const FlowStateList = ({ leadId, nextFlowStates, onClose, onChange }: FlowStateListProps) => {
+/**
+ * Lista de posibles próximos estados (de flujo o de contacto). Al elegir uno, en vez de
+ * cambiar al toque, muestra un campo de notas opcional antes de confirmar el cambio.
+ */
+const StateChangeList = ({ title, leadId, options, onClose, onChange, submit }: StateChangeListProps) => {
 
-    const handleClick = (flowId: number) => {
-        changeFlowState(leadId, flowId)
+    const [selected, setSelected] = useState<StateOption | null>(null)
+    const [notes, setNotes] = useState("")
+
+    const onSubmit = () => {
+        if (!selected) return Promise.resolve()
+        return submit(leadId, selected.id, notes.trim() || undefined)
             .then(lead => {
                 onChange(lead)
                 onClose()
             })
             .catch(e => showCommonErrorToast(e))
     }
-    return (
-        <List component={GenericPaper} elevation={1} dense
-            sx={{ minWidth: "10rem", maxWidth: "25rem", p: 0 }}
-            aria-labelledby="next-flow-states"
-            subheader={
-                <ListSubheader id="next-flow-subheader" sx={{ backgroundColor: "transparent" }}>
-                    Actualizar Estado de Flujo
-                </ListSubheader>
-            }
-        >
-            <Divider />
-            {nextFlowStates.map(state => (
-                <ListItemButton onClick={() => handleClick(state.id)} key={`flow-state-${state.id}`}>
-                    <CustomChip label={state.name} chipColor={state.color} sx={{ width: "100%" }} />
-                </ListItemButton>
-            ))}
 
-        </List>
+    const { fnWithLoading: submitLoad, loading } = useLoading(onSubmit)
+
+    if (selected) return (
+        <Stack component={GenericPaper} elevation={1} spacing={1.5} sx={{ minWidth: "16rem", maxWidth: "25rem", p: 1.5 }}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                <Typography variant="body2">Cambiar a:</Typography>
+                <CustomChip label={selected.name} chipColor={selected.color} />
+            </Stack>
+            <TextField label="Notas (opcional)" placeholder="Motivo del cambio..." multiline minRows={2}
+                size="small" fullWidth value={notes} onChange={e => setNotes(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }} />
+            <Stack direction="row" spacing={1} sx={{ justifyContent: "end" }}>
+                <CommonButton actionType="CLOSE" variant="outlined" color="error" onClick={() => setSelected(null)} disabled={loading}>
+                    Volver
+                </CommonButton>
+                <CommonButton actionType="SAVE" variant="contained" onClick={submitLoad} loading={loading}>
+                    Confirmar
+                </CommonButton>
+            </Stack>
+        </Stack>
     )
-}
-
-interface ContactStateListProps extends StateListProps {
-    contactStates: LeadContactState[],
-    onChange: (lead: Lead) => void
-}
-const ContactStateList = ({ leadId, contactStates, onClose, onChange }: ContactStateListProps) => {
-
-    const handleClick = (contactId: number) => {
-        changeContactState(leadId, contactId)
-            .then(lead => {
-                onChange(lead)
-                onClose()
-            })
-            .catch(e => showCommonErrorToast(e))
-    }
 
     return (
         <List component={GenericPaper} elevation={1} dense
             sx={{ minWidth: "10rem", maxWidth: "25rem", p: 0 }}
-            aria-labelledby="next-cont-states"
             subheader={
-                <ListSubheader id="next-cont-subheader" sx={{ backgroundColor: "transparent" }}>
-                    Actualizar Estado de Contacto
+                <ListSubheader sx={{ backgroundColor: "transparent" }}>
+                    {title}
                 </ListSubheader>
             }
         >
             <Divider />
-            {contactStates.map(state => (
-                <ListItemButton onClick={() => handleClick(state.id)} key={`cont-state-${state.id}`}>
-                    <CustomChip label={state.name} chipColor={state.color} sx={{ width: "100%" }} />
+            {options.map(option => (
+                <ListItemButton onClick={() => setSelected(option)} key={`state-option-${option.id}`}>
+                    <CustomChip label={option.name} chipColor={option.color} sx={{ width: "100%" }} />
                 </ListItemButton>
             ))}
-
         </List>
     )
 }

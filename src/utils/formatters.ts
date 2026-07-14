@@ -15,6 +15,17 @@ export const formatMoney = (money: number, languageCode: string = "es-AR", curre
     return new Intl.NumberFormat(languageCode, { style: "currency", currency: currencyCode }).format(money)
 }
 
+/**
+ * Arma "Nombre Apellido" a partir de un Creator/Updater (u objeto similar).
+ * Antes se mostraba solo el nombre de pila, lo cual generaba ambigüedad entre
+ * usuarios con el mismo nombre. Si no hay apellido cargado (dato opcional), devuelve
+ * solo el nombre.
+ */
+export const formatUserFullName = (user?: { name?: string | null, last_name?: string | null } | null): string | null => {
+    if (!user?.name) return null
+    return [user.name, user.last_name].filter(Boolean).join(" ")
+}
+
 export const formatDate = (date: string, formatType: DateFormat, customFormat: string = 'dddd DD/MM/YYYY HH:mm:ss') => {
     let format
     switch (formatType) {

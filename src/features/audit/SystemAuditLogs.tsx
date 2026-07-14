@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
-    Stack, Typography, Box, Collapse, TextField, IconButton, Paper,
+    Stack, Typography, Box, Collapse, TextField, IconButton, Paper, Tooltip,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow
 } from '@mui/material'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
@@ -15,6 +15,7 @@ import PaginationComponent from 'shared/ui/lists/PaginationComponent'
 import { getDictionaries } from 'src/services/generalService'
 import type { SystemAuditLog } from 'src/types/systemAudit'
 import type { Paginable } from 'src/types/shared'
+import { formatUserFullName } from 'src/utils/formatters'
 
 // Componente que pasaste
 import { ControlledAutocomplete } from 'src/components/ui/forms/CustomMultipleInputs' // <-- Ajusta este path a donde lo tengas
@@ -24,7 +25,7 @@ import { getSystemAudit } from './SystemAuditServices'
 interface AuditFilters {
     entity_type: string | null;
     action: string | null;
-    creator_name: string;
+    creator_search: string;
     start_date: string;
     end_date: string;
 }
@@ -65,7 +66,11 @@ const AuditTableRow = ({
                 <TableCell>{entityDisplay}</TableCell>
                 <TableCell>{log.entity_id}</TableCell>
                 <TableCell><b>{actionDisplay}</b></TableCell>
-                <TableCell>{log.creator?.name ? `${log.creator?.name}` : 'Sistema'}</TableCell>
+                <TableCell>
+                    <Tooltip title={log.creator?.email ?? ""} disableHoverListener={!log.creator?.email}>
+                        <span>{formatUserFullName(log.creator) ?? 'Sistema'}</span>
+                    </Tooltip>
+                </TableCell>
                 <TableCell>{new Date(log.created_at).toLocaleString()}</TableCell>
                 <TableCell align="right">
                     {hasChanges && (
@@ -112,7 +117,7 @@ export const SystemAuditList = () => {
         defaultValues: {
             entity_type: null,
             action: null,
-            creator_name: '',
+            creator_search: '',
             start_date: '',
             end_date: ''
         }
@@ -159,7 +164,7 @@ export const SystemAuditList = () => {
 
         if (debouncedFilters.entity_type) params.entity_type = debouncedFilters.entity_type;
         if (debouncedFilters.action) params.action = debouncedFilters.action;
-        if (debouncedFilters.creator_name) params.creator_name = debouncedFilters.creator_name;
+        if (debouncedFilters.creator_search) params.creator_search = debouncedFilters.creator_search;
         if (debouncedFilters.start_date) params.start_date = debouncedFilters.start_date;
         if (debouncedFilters.end_date) params.end_date = debouncedFilters.end_date;
 
@@ -215,8 +220,8 @@ export const SystemAuditList = () => {
                             </TableCell>
                             <TableCell>
                                 <TextField
-                                    {...register("creator_name")}
-                                    placeholder="Nombre del creador"
+                                    {...register("creator_search")}
+                                    placeholder="Nombre, apellido o email"
                                     size="small"
                                     variant="standard"
                                 />

@@ -48,13 +48,31 @@ export interface LeadComment extends LeadCommentPost, Metadata {
 export interface LeadAudit extends Metadata {
   id: number,
   lead_id: number,
-  activity_type: "LEAD_CREATED" | "FIELDS_UPDATED" | "STATE_CHANGED",
+  activity_type: "LEAD_CREATED" | "FIELDS_UPDATED" | "STATE_CHANGED" | "LEAD_REASSIGNED" | "CONTACT_STATE_CHANGED",
   details: {
     message?: string,
     notes?: string,
     changes?: LeadAuditChange
     to_state_id?: number
+    to_state_name?: string
+    to_state_color?: string
     from_state_id?: number
+    from_state_name?: string
+    from_state_color?: string
+    previous_team_id?: number | null
+    previous_team_name?: string | null
+    previous_user_id?: number | null
+    previous_user_name?: string | null
+    new_team_id?: number | null
+    new_team_name?: string | null
+    new_user_id?: number | null
+    new_user_name?: string | null
+    from_contact_state_id?: number | null
+    from_contact_state_name?: string | null
+    from_contact_state_color?: string | null
+    to_contact_state_id?: number
+    to_contact_state_name?: string
+    to_contact_state_color?: string
   }
 }
 
