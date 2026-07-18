@@ -168,7 +168,9 @@ interface LeadFormDateInput<T extends FieldValues> extends RegisterFormInput<T> 
     multiline?: boolean,
     subtype?: string
 }
-const DATE_INPUT_TYPE = {
+// Exportado para poder normalizar/comparar fechas contra este mismo formato desde afuera
+// (ver InlineFieldEdit en LeadDetailsSections.tsx, que necesita saber si una fecha "cambió de verdad").
+export const DATE_INPUT_TYPE = {
     DATE_TIME: { inputType: "datetime-local", format: "YYYY-MM-DD HH:mm:ss", type: "DATE_TIME" },
     DATE_EVENT: { inputType: "datetime-local", format: "YYYY-MM-DD HH:mm:ss", type: "DATE_TIME" },
     TIME_ONLY: { inputType: "time", format: "HH:mm:ss", type: "DATE_TIME" },

@@ -12,10 +12,11 @@ import type { Paginable } from "src/types/shared"
 import { deleteComment, getComments } from "./leadActivitiesService"
 import { showCommonErrorToast, showToast } from "src/utils/feedback"
 import { Box, Divider, Grid, IconButton, Paper, Stack, Typography } from "@mui/material"
-import { alpha, styled } from "@mui/material/styles"
+import { styled } from "@mui/material/styles"
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
-import { getColorShades } from "src/utils/formatters"
+import { formatUserFullName, getColorShades } from "src/utils/formatters"
+import { UserAvatar } from "shared/ui/details/UserAvatar"
 
 export const LeadComments = ({ leadId }: { leadId: number }) => {
 
@@ -72,7 +73,7 @@ export const LeadComments = ({ leadId }: { leadId: number }) => {
                             <Grid key={com.id} size="grow" sx={{ minWidth: "15rem" }}>
                                 {com.id !== selectedCommentId ? (
                                     <CommentInstance comment={com} onEdit={() => setSelectedCommentId(com.id)}
-                                        onDelete={() => setDeletingCom(com)} title={<MetadataShort metadata={com} onlyUser />}
+                                        onDelete={() => setDeletingCom(com)} title={<MetadataShort metadata={com} onlyUser noIcon />}
                                         footerContent={<MetadataShort metadata={com} onlyDate containerProps={{ sx: { ml: "auto" } }} />} >
                                         {com.content}
                                     </CommentInstance>
@@ -93,41 +94,36 @@ export const LeadComments = ({ leadId }: { leadId: number }) => {
     )
 }
 
+// Restyle más plano tipo "burbuja de chat": en vez de bandas de color arriba/abajo,
+// se usa un borde de acento a la izquierda + avatar de color por autor (lógica de color
+// por comentario sin cambios, sigue viniendo de comment.color).
 const CommentNote = styled(Paper)(({ theme, ...props }) => {
 
     const colorShades = getColorShades(props.color ?? "secondary", theme)
 
     return ([{
-        borderRadius: "1rem 1rem 0 1rem",
-        border: `1px solid ${colorShades.DARK}`,
+        borderRadius: "0 1rem 1rem 1rem",
+        borderLeft: `4px solid ${colorShades.MAIN}`,
         overflow: "hidden",
         color: theme.palette.text.primary,
+        backgroundColor: theme.alpha(colorShades.LIGHT, .1),
         "& .comment-footer, .comment-header": {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             flexWrap: "wrap",
         },
-        "& .comment-header": {
-            backgroundColor: alpha(colorShades.LIGHT, .5),
-            borderBottom: `1px solid ${colorShades.MAIN}`,
-        },
         "& .comment-footer": {
-            backgroundColor: alpha(colorShades.LIGHT, .5),
-            borderTop: `1px solid ${colorShades.MAIN}`,
+            borderTop: `1px solid ${theme.alpha(colorShades.MAIN, .25)}`,
         },
         "& .comment-main": {
             minHeight: "3rem",
         },
     },
     theme.applyStyles('dark', {
-        "& .comment-header": {
-            backgroundColor: alpha(colorShades.DARK, .15),
-            borderBottom: `1px solid ${colorShades.DARK}`,
-        },
+        backgroundColor: theme.alpha(colorShades.DARK, .12),
         "& .comment-footer": {
-            backgroundColor: alpha(colorShades.DARK, .15),
-            borderTop: `1px solid ${colorShades.DARK}`,
+            borderTop: `1px solid ${theme.alpha(colorShades.DARK, .3)}`,
         },
     })
     ])
@@ -146,10 +142,16 @@ interface CommentInstanceProps {
 
 export const CommentInstance = ({ comment, title, color, footerContent, onEdit, onDelete, children }: CommentInstanceProps) => {
 
+    const author = comment?.updater ?? comment?.creator ?? null
+    const authorName = formatUserFullName(author)
+
     return (
         <CommentNote color={comment?.color ?? color ?? "secondary"}>
-            <Box className="comment-header" sx={{ px: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{title}</Typography>
+            <Box className="comment-header" sx={{ px: 2, py: 1 }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center", overflow: "hidden" }}>
+                    {authorName && <UserAvatar name={authorName} size={28} />}
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }} noWrap>{title}</Typography>
+                </Stack>
                 <Stack direction="row">
                     {onEdit && <IconButton aria-label="edit" size="small" onClick={() => onEdit()} color="inherit">
                         <EditIcon fontSize="small" />

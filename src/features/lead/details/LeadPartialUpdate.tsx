@@ -22,8 +22,9 @@ import { LeadFormBool, LeadFormDate, LeadFormFile, LeadFormNumber, LeadFormText 
 
 /**
  * Toma el lead viejo y el nuevo, y recorre los leadFields del lead viejo, reemplazando sus valores por los nuevos.
+ * Exportado para reutilizarse también desde la edición inline con autoguardado (ver LeadDetailsSections.tsx).
  */
-const getUpdatedLead = (oldLead: LeadDetailed, newLead: Lead) => {
+export const getUpdatedLead = (oldLead: LeadDetailed, newLead: Lead) => {
 
     const newfieldValuesCopy = [...newLead.field_values].sort((a, b) => b.field.id - a.field.id)
     const oldfieldValuesCopy = [...oldLead.field_values].sort((a, b) => b.field.id - a.field.id)
@@ -39,15 +40,15 @@ const getUpdatedLead = (oldLead: LeadDetailed, newLead: Lead) => {
     return { ...oldLead, field_values: newFieldValues } as LeadDetailed
 }
 
-interface PartialFormValue {
+export interface PartialFormValue {
     field_id: number,
     value: string | number[] | number | FileList | null
 }
-interface PartialFormProps {
+export interface PartialFormProps {
     values: PartialFormValue[]
 }
 
-const getValue = (fieldValue: LeadFieldValueDetailed) => {
+export const getValue = (fieldValue: LeadFieldValueDetailed) => {
     if (fieldValue.field.field_type_code === "LEAD") return getListField(fieldValue.related_leads, "id", true) as number[]
     if (["SELECTOR_MULTIPLE", "CHECKBOX_MULTIPLE"].includes(fieldValue?.field?.field_subtype_code ?? ""))
         return getListField(fieldValue.nomenclator_items, "id", true) as number[]
@@ -156,7 +157,7 @@ interface LeadFormFieldTypeProps {
     size?: "small" | "medium"
 }
 
-const LeadFormFieldType = ({ register, control, setValue, name, leadField, lead, liveParentName, errorMessage, size = "medium" }: LeadFormFieldTypeProps) => {
+export const LeadFormFieldType = ({ register, control, setValue, name, leadField, lead, liveParentName, errorMessage, size = "medium" }: LeadFormFieldTypeProps) => {
 
     const label = leadField.name ?? undefined
     const typeCode = leadField.field_type_code

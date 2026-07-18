@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { LeadFieldSections } from "./LeadDetailsSections"
 import { LeadTags } from "src/features/orgProperties/tags/LeadTagsMenu.tsx"
 import { LeadActivities } from "../activities/LeadActivities"
@@ -18,11 +18,18 @@ import { LeadTitleConfigSidebar } from "src/features/lead/leadTitleConfig/LeadTi
 import { showCommonErrorToast, showToast } from "src/utils/feedback.ts"
 import { useLeadNavigation } from "../stores/LeadNavigationContext.tsx"
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom"
-import { Grid, Typography, ButtonGroup, Stack, Breadcrumbs, Link, Box, CircularProgress, Fab, Slide } from "@mui/material"
+import { Grid, Typography, ButtonGroup, Stack, Breadcrumbs, Link, Box, CircularProgress, Fab, Slide, Tooltip, Button } from "@mui/material"
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import MailOutlineIcon from '@mui/icons-material/MailOutlined';
+import CallIcon from '@mui/icons-material/Call';
+import EventIcon from '@mui/icons-material/Event';
+import PersonIcon from '@mui/icons-material/Person';
+import GroupsIcon from '@mui/icons-material/Groups';
 import { LeadDetailsState } from "./LeadDetailsState.tsx"
 import type { LeadFieldDetailed } from "src/types/leadFields.ts"
+import { UserAvatar } from "shared/ui/details/UserAvatar.tsx"
+import { formatDate } from "src/utils/formatters.ts"
 
 export const LeadDetailsLayout = () => {
 
@@ -226,23 +233,28 @@ interface LeadInfoProps {
 }
 
 export const LeadInfo = ({ lead, leadTitle, handleActive, updateLeadInfo, onOpenTitleConfig }: LeadInfoProps) => {
+
+    const titleText = (leadTitle && leadTitle?.length > 0) ? leadTitle?.join(" ") : "Título no encontrado"
+
     return (
         <Stack spacing={2}>
             <GenericPaper elevation={0}>
                 <Stack spacing={3} sx={{ alignItems: "start" }}>
-                    <Stack spacing={1} sx={{ width: "100%" }}>
-                        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                            <TitleAndActive active={lead?.active} sx={{ flexGrow: 1 }}>
+                    <Stack direction="row" spacing={2} sx={{ width: "100%", alignItems: "center" }}>
+                        <UserAvatar name={titleText} src={lead.picture_avatar_url || undefined} size={56} />
+                        <Stack spacing={1} sx={{ flexGrow: 1, minWidth: 0 }}>
+                            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                                 <Typography sx={{ textOverflow: "ellipsis" }} variant="h1">
-                                    {(leadTitle && leadTitle?.length > 0) ? leadTitle?.join(" ") : "Título no encontrado"}
+                                    {titleText}
                                 </Typography>
-                            </TitleAndActive>
-                            {onOpenTitleConfig &&
-                                <CommonIconButton actionType="RENAME" title="Configurar título"
-                                    onClick={onOpenTitleConfig} size="small" />
-                            }
+                                {onOpenTitleConfig &&
+                                    <CommonIconButton actionType="RENAME" title="Configurar título"
+                                        onClick={onOpenTitleConfig} size="small" />
+                                }
+                            </Stack>
                         </Stack>
                     </Stack>
+                    <LeadQuickActions />
                     <ButtonGroup fullWidth>
                         <CommonButton actionType={lead.active ? "DISABLE" : "ENABLE"} variant="outlined"
                             color={lead.active ? "error" : "success"} onClick={() => handleActive(lead)}>
@@ -255,9 +267,65 @@ export const LeadInfo = ({ lead, leadTitle, handleActive, updateLeadInfo, onOpen
                     </ButtonGroup>
                     <LeadTags lead={lead} updateLeadInfo={updateLeadInfo} />
                     <LeadDetailsState lead={lead} updateLeadInfo={updateLeadInfo} contactState={lead.contact_state} flowState={lead.current_state} />
+                    <LeadMetaInfo lead={lead} />
                 </Stack>
             </GenericPaper>
             <LeadFieldSections lead={lead} updateLeadInfo={updateLeadInfo} />
+        </Stack>
+    )
+}
+
+/**
+ * Botones de acciones rápidas (Correo, Llamar, Reunión). Por ahora son solo visuales,
+ * sin funcionalidad ni datos asociados (a definir más adelante de dónde sale el email/teléfono).
+ */
+const LeadQuickActions = () => {
+    const actions: { label: string, icon: ReactNode }[] = [
+        { label: "Correo", icon: <MailOutlineIcon fontSize="small" /> },
+        { label: "Llamar", icon: <CallIcon fontSize="small" /> },
+        { label: "Reunión", icon: <EventIcon fontSize="small" /> },
+    ]
+    return (
+        <Stack direction="row" spacing={1} sx={{ width: "100%" }}>
+            {actions.map(action =>
+                <Button key={action.label} variant="outlined" color="primary"
+                    fullWidth disabled startIcon={action.icon}>
+                    {action.label}
+                </Button>
+            )}
+        </Stack>
+    )
+}
+
+/**
+ * Meta-datos del lead: propietario (usuario/equipo asignado), creación y última actividad.
+ * El backend todavía no expone `assigned_to_user`/`team` en el detalle del lead (solo en el
+ * listado), así que por ahora se muestran solo las etiquetas de Propietario sin resolver
+ * el nombre, como recordatorio para agregar ese dato en el backend más adelante.
+ */
+const LeadMetaInfo = ({ lead }: { lead: LeadDetailed }) => {
+    const rows: { icon: ReactNode, label: string, value?: string }[] = [
+        ...(lead.assigned_to_user_id ? [{ icon: <PersonIcon fontSize="small" />, label: "Usuario asignado" }] : []),
+        ...(lead.team_id ? [{ icon: <GroupsIcon fontSize="small" />, label: "Equipo asignado" }] : []),
+        { icon: undefined, label: "Creado", value: formatDate(lead.created_at, "date") },
+        ...(lead.updated_at ? [{ icon: undefined, label: "Última actividad", value: formatDate(lead.updated_at, "date") }] : []),
+    ]
+
+    return (
+        <Stack spacing={.5} sx={{ width: "100%" }}>
+            {rows.map(row =>
+                <Stack key={row.label} direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                    {row.icon &&
+                        <Tooltip title={row.label}>
+                            <Stack sx={{ color: "text.secondary" }}>{row.icon}</Stack>
+                        </Tooltip>
+                    }
+                    <Typography variant="caption" color="text.secondary">{row.label}</Typography>
+                    {row.value &&
+                        <Typography variant="caption" sx={{ fontWeight: 600 }}>{row.value}</Typography>
+                    }
+                </Stack>
+            )}
         </Stack>
     )
 }

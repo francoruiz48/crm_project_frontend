@@ -18,7 +18,7 @@ const ICON_SIZE_EM = textTheme.root.lineHeight
 const CustomChip = memo(styled(Chip, {
     shouldForwardProp: (prop) => prop !== "chipColor"
 })(
-    ({ theme, chipColor, defaultColor = "primary", size = "medium" }) => {
+    ({ theme, chipColor, defaultColor = "primary", size = "small" }) => {
 
         const resolvedColor = chipColor ?? defaultColor
         const paletteColors = getColorShades(resolvedColor, theme)

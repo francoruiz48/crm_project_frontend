@@ -12,20 +12,17 @@ import { useLoading } from 'src/hooks/useLoading'
 import type { LeadDetailed } from 'src/types/leads'
 import type { Paginable } from 'src/types/shared'
 import { showCommonErrorToast, showToast } from 'src/utils/feedback'
-import { Box, Button, Checkbox, List, ListItemButton, ListItemIcon, Popover, Stack, Typography, ListItemText, ButtonGroup } from '@mui/material'
-import AddIcon from "@mui/icons-material/Add"
+import { Checkbox, List, ListItemButton, ListItemIcon, Popover, Stack, Typography, ListItemText, ButtonGroup } from '@mui/material'
+import LocalOfferIcon from "@mui/icons-material/LocalOffer"
 import { deleteTag, getTags } from './LeadTagService'
 import type { LeadTag, LeadTagDetailed } from 'src/types/orgProperties'
 import { updateLeadTags } from 'src/features/lead/leadService'
 
 export const LeadTags = ({ lead, updateLeadInfo }: { lead: LeadDetailed, updateLeadInfo: (lead: LeadDetailed) => void }) => {
 
-    const [openList, setOpenList] = useState<boolean>(false)
-
     const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
-    const openTagMenu = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-        setOpenList(true)
+    const openTagMenu = (e: React.MouseEvent<HTMLElement>) => {
         setMenuAnchor(e.currentTarget)
     }
     const closeTagMenu = () => {
@@ -83,42 +80,35 @@ export const LeadTags = ({ lead, updateLeadInfo }: { lead: LeadDetailed, updateL
         handleLeadTagUpdate(newTags)
         return fetchTagsLoad(fetchPage, pageSize)
     }
+    /** Saca un tag puntual del lead (sin abrir el popover), directo desde la X del chip */
+    const handleUnassignTag = (tagToRemove: LeadTag) => {
+        const newTagIds = lead.tags.filter(tag => tag.id !== tagToRemove.id).map(tag => tag.id)
+        return updateLeadTags(newTagIds, lead.id)
+            .then(res => handleLeadTagUpdate(res.tags))
+            .catch(e => showCommonErrorToast(e))
+    }
 
     return (<>
-        {(lead.tags.length === 0) ? (
-            <Box sx={{ width: "100%" }}>
-                <Button sx={{ p: 0, minWidth: 0 }} size="small" onClick={openTagMenu}>
-                    <CustomChip chipColor="primary" size='small' label={
-                        <AddIcon fontSize='inherit' />
-                    } />
-                </Button>
-            </Box>
-        ) : (
-            <>
-                <Stack direction="row" spacing={.5} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center", justifyContent: "start", width: "100%" }}>
+        <Stack direction="row" spacing={.5} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center", justifyContent: "start", width: "100%" }}>
+            {lead.tags.length === 0 ? (
+                // Antes esto era solo un "+" suelto (sin texto ni ícono de etiqueta), poco
+                // claro sobre qué hacía. Ahora deja explícito que es para agregar etiquetas.
+                <CustomChip chipColor="primary" size='small' onClick={openTagMenu} label={
+                    <Stack direction="row" spacing={.5} sx={{ alignItems: "center" }}>
+                        <LocalOfferIcon fontSize='inherit' />
+                        <span>Etiquetas</span>
+                    </Stack>
+                } />
+            ) : (
+                <>
                     {lead.tags.map(tag =>
-                        <Button sx={{ p: 0, minWidth: 0 }} size="small" key={`lead-${tag.id}`} onClick={() => setOpenList(p => !p)}>
-                            <CustomChip size='small' chipColor={tag.color} defaultColor="secondary" label={tag.name}
-                                sx={{
-                                    maxHeight: openList ? "5rem" : ".5rem", maxWidth: openList ? "10rem" : "3rem",
-                                    transition: `all 150ms ease-in-out ${openList ? "0ms" : "100ms"}`,
-                                    "& .MuiChip-label": {
-                                        opacity: openList ? 1 : 0,
-                                        transition: `opacity 200ms ease-in-out ${openList ? "150ms" : "0ms"}`,
-                                    }
-                                }} />
-                        </Button>
+                        <CustomChip key={`lead-${tag.id}`} size='small' chipColor={tag.color} defaultColor="secondary"
+                            label={tag.name} onDelete={() => handleUnassignTag(tag)} />
                     )}
-                    <Button sx={{ p: 0, minWidth: 0 }} size="small" onClick={openTagMenu}>
-                        <CustomChip chipColor="primary" size='small' label={<Stack direction="row" spacing={.5}><AddIcon fontSize='inherit' />{lead.tags.length === 0 && "Etiquetas"}</Stack>}
-                            sx={{
-                                maxHeight: "5rem", maxWidth: "10rem", display: openList ? "flex" : "none",
-                                transition: `all 150ms ease-in-out ${openList ? "150ms" : "0ms"}`,
-                            }} />
-                    </Button>
-                </Stack>
-            </>
-        )}
+                    <CommonIconButton title="Agregar etiquetas" actionType="CREATE" color="primary" size="small" onClick={openTagMenu} />
+                </>
+            )}
+        </Stack>
         <LeadTagsMenu leadId={lead.id} tagList={tagList?.items} leadTags={lead.tags} pageComponentProps={pageComponentProps}
             menuAnchor={menuAnchor} handleClose={closeTagMenu} loadingList={loading}
             handleLeadTagUpdate={handleLeadTagUpdate} handleTagsUpdate={handleTagsUpdate} handleDeleteTag={handleDeleteTag} />
