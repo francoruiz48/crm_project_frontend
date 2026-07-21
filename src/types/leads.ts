@@ -28,6 +28,11 @@ export interface Lead {
   assigned_to_user_id: number | null,
   team_id: number | null,
   picture_avatar_url?: string | null;
+  //Solo viene poblado cuando este Lead aparece como "lead relacionado" (campo tipo LEAD) dentro
+  //de OTRO lead, y el usuario actual no tiene acceso a su campaña. En ese caso field_values ya
+  //viene recortado por el backend a solo los campos title_order (ver RelatedLeadResponse en
+  //lead_field_value_schema.py) — el resto de los datos de este lead nunca llega al frontend.
+  restricted?: boolean;
 }
 export interface LeadDetailed extends Lead, Metadata {
   field_values: LeadFieldValueDetailed[];

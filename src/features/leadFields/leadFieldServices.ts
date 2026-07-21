@@ -85,3 +85,8 @@ export const updateLeadFieldTitle = async (titleOrder: number | null, id: number
     const leadField = await axiosCRM.put(`lead_fields/${id}`, { "title_order": titleOrder });
     return leadField.data;
 };
+
+export const updateLeadFieldSubtitle = async (subtitleOrder: number | null, id: number): Promise<LeadFieldDetailed> => {
+    const leadField = await axiosCRM.put(`lead_fields/${id}`, { "subtitle_order": subtitleOrder });
+    return leadField.data;
+};

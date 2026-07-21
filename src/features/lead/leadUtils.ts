@@ -37,6 +37,19 @@ export const getLeadTitleArray = (lead: Lead | LeadDetailed, short: boolean = fa
     return short ? [titleArray[0]] : titleArray
 }
 
+/**
+ * Igual que getLeadTitleArray, pero para el subtítulo (línea secundaria debajo del título, ej.
+ * Cargo + Empresa). A diferencia del título, si no hay ningún campo configurado como
+ * subtitle_order devuelve un arreglo vacío — el subtítulo es opcional, no mostrar nada es lo
+ * correcto (no hay equivalente a "Sin título" acá).
+ */
+export const getLeadSubtitleArray = (lead: Lead | LeadDetailed) => {
+    return lead.field_values
+        .filter(fv => fv.field.subtitle_order !== null && isTitleValid(fv) && fv.field.active && fv.active)
+        .sort((a, b) => a.field.subtitle_order! - b.field.subtitle_order!)
+        .map(fv => fv.value ?? fv.nomenclator_items[0].value!) //Si es selector, será único gracias a isTitleValid
+}
+
 /********************************************  FormData  ***********************************************/
 
 /**

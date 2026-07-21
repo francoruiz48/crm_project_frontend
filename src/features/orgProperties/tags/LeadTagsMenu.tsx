@@ -1,86 +1,51 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { TagFormMenuWrapper } from './LeadTagForm'
-import { DisableConfirmDialog } from 'src/components/ui/feedback/ConfirmationDialog'
-import { CommonIconButton } from 'shared/ui/buttons/CommonIconButton'
-import PaginationComponent from 'shared/ui/lists/PaginationComponent'
-import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen'
-import { CustomListItem } from 'shared/ui/lists/CustomListItem'
-import CommonButton from 'shared/ui/buttons/CommonButton'
 import CustomChip from 'shared/ui/details/CustomChip'
-import { useListPagination } from 'src/hooks/useListPagination'
 import { useLoading } from 'src/hooks/useLoading'
 import type { LeadDetailed } from 'src/types/leads'
-import type { Paginable } from 'src/types/shared'
-import { showCommonErrorToast, showToast } from 'src/utils/feedback'
-import { Checkbox, List, ListItemButton, ListItemIcon, Popover, Stack, Typography, ListItemText, ButtonGroup } from '@mui/material'
-import LocalOfferIcon from "@mui/icons-material/LocalOffer"
-import { deleteTag, getTags } from './LeadTagService'
-import type { LeadTag, LeadTagDetailed } from 'src/types/orgProperties'
+import { showCommonErrorToast } from 'src/utils/feedback'
+import { Box, Chip, List, ListItemButton, Paper, Stack, TextField, Typography } from '@mui/material'
+import AddIcon from "@mui/icons-material/Add"
+import { InlineColorPickerButton } from 'src/components/ui/forms/ColorPicker'
+import { createTag, getTags } from './LeadTagService'
+import type { LeadTag } from 'src/types/orgProperties'
 import { updateLeadTags } from 'src/features/lead/leadService'
+
+//Color por defecto del picker cuando el usuario todavía no eligió ninguno (un gris azulado neutro,
+//para no confundirse con los colores "primary"/"secondary" que ya usa el resto de la app).
+const DEFAULT_TAG_COLOR = "#64748B"
+
+//Mismo estilo que SECTION_LABEL_SX de LeadDetailsState.tsx (Estado de Contacto/Flujo), para que el
+//título "Etiquetas" quede visualmente igual a esos otros títulos de sección.
+const SECTION_LABEL_SX = { fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: ".04em" }
 
 export const LeadTags = ({ lead, updateLeadInfo }: { lead: LeadDetailed, updateLeadInfo: (lead: LeadDetailed) => void }) => {
 
-    const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+    //Cache local de las etiquetas ya creadas en la organización, para poder reutilizar una etiqueta
+    //existente (por nombre) en vez de crear una duplicada, y para ofrecerlas como sugerencias
+    //mientras se escribe.
+    const [tagList, setTagList] = useState<LeadTag[]>([])
 
-    const openTagMenu = (e: React.MouseEvent<HTMLElement>) => {
-        setMenuAnchor(e.currentTarget)
-    }
-    const closeTagMenu = () => {
-        setMenuAnchor(null)
-    }
-    const [tagList, setTagList] = useState<Paginable<LeadTag> | null>(null)
-
-    const { fetchPage, pageSize, pageComponentProps } = useListPagination(tagList, 8)
-
-    const fetchTags = useCallback((fetchPage: number, pageSize: number) => {
-        return getTags({ only_active: true, page: fetchPage, page_size: pageSize })
-            .then(setTagList)
-            .catch(e => showCommonErrorToast(e))
+    const fetchTags = useCallback(() => {
+        return getTags({ only_active: true, page_size: 0 })
+            .then(res => setTagList(res.items))
+            .catch(e => showCommonErrorToast(e, "No se han podido recuperar las etiquetas."))
     }, [])
 
-    const { fnWithLoading: fetchTagsLoad, loading } = useLoading(fetchTags)
+    const { fnWithLoading: fetchTagsLoad, loading: loadingTags } = useLoading(fetchTags)
 
     useEffect(() => {
-        fetchTagsLoad(fetchPage, pageSize)
+        fetchTagsLoad()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [fetchPage, pageSize])
+    }, [])
 
-    /** Actualiza la entidad lead, con sus nuevos tags */
-    const handleLeadTagUpdate = (tags: LeadTag[]) => {
-        const leadCopy = { ...lead, tags: tags }
-        updateLeadInfo(leadCopy)
-    }
-    /** Actualiza la lista de tags de la organización */
-    const handleTagListUpdate = (modifiedTag: LeadTag) => {
-        if (!tagList) return
-        const oldTags = [...tagList.items]
-        const modTagIdx = oldTags.findIndex(oldTag => oldTag.id === modifiedTag.id)
-        if (modTagIdx === -1) return
-        oldTags[modTagIdx] = modifiedTag
-        setTagList({ ...tagList, items: oldTags })
-    }
-    /** Actualiza la lista de tags del lead  */
-    const handleLeadTagsUpdate = (modifiedTag: LeadTag) => {
-        const oldTags = [...lead.tags]
-        const modTagIdx = oldTags.findIndex(oldTag => oldTag.id === modifiedTag.id)
-        if (modTagIdx === -1) return
-        oldTags[modTagIdx] = modifiedTag
-        handleLeadTagUpdate(oldTags)
-    }
-    /** Actualiza las listas según si modifica o crea un tag */
-    const handleTagsUpdate = (modifiedTag?: LeadTag) => {
-        if (!modifiedTag) return fetchTagsLoad(fetchPage, pageSize)
-        handleTagListUpdate(modifiedTag)
-        handleLeadTagsUpdate(modifiedTag)
-    }
-    /** Actualiza las listas cuando se elimina un tag */
-    const handleDeleteTag = (deletedTag: LeadTag) => {
-        const oldTags = [...lead.tags]
-        const newTags = oldTags.filter(oldTag => oldTag.id !== deletedTag.id)
-        handleLeadTagUpdate(newTags)
-        return fetchTagsLoad(fetchPage, pageSize)
-    }
-    /** Saca un tag puntual del lead (sin abrir el popover), directo desde la X del chip */
+    //Etiquetas que todavía no están asignadas a este lead (no tiene sentido sugerir una que ya tiene).
+    const availableTags = useMemo(() =>
+        tagList.filter(tag => !lead.tags.some(leadTag => leadTag.id === tag.id)),
+        [tagList, lead.tags])
+
+    const handleLeadTagUpdate = (tags: LeadTag[]) => updateLeadInfo({ ...lead, tags })
+
+    /** Saca un tag puntual del lead (no borra la etiqueta en sí, solo la desasigna) */
     const handleUnassignTag = (tagToRemove: LeadTag) => {
         const newTagIds = lead.tags.filter(tag => tag.id !== tagToRemove.id).map(tag => tag.id)
         return updateLeadTags(newTagIds, lead.id)
@@ -88,175 +53,161 @@ export const LeadTags = ({ lead, updateLeadInfo }: { lead: LeadDetailed, updateL
             .catch(e => showCommonErrorToast(e))
     }
 
-    return (<>
-        <Stack direction="row" spacing={.5} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center", justifyContent: "start", width: "100%" }}>
-            {lead.tags.length === 0 ? (
-                // Antes esto era solo un "+" suelto (sin texto ni ícono de etiqueta), poco
-                // claro sobre qué hacía. Ahora deja explícito que es para agregar etiquetas.
-                <CustomChip chipColor="primary" size='small' onClick={openTagMenu} label={
-                    <Stack direction="row" spacing={.5} sx={{ alignItems: "center" }}>
-                        <LocalOfferIcon fontSize='inherit' />
-                        <span>Etiquetas</span>
-                    </Stack>
-                } />
-            ) : (
-                <>
-                    {lead.tags.map(tag =>
-                        <CustomChip key={`lead-${tag.id}`} size='small' chipColor={tag.color} defaultColor="secondary"
-                            label={tag.name} onDelete={() => handleUnassignTag(tag)} />
-                    )}
-                    <CommonIconButton title="Agregar etiquetas" actionType="CREATE" color="primary" size="small" onClick={openTagMenu} />
-                </>
-            )}
-        </Stack>
-        <LeadTagsMenu leadId={lead.id} tagList={tagList?.items} leadTags={lead.tags} pageComponentProps={pageComponentProps}
-            menuAnchor={menuAnchor} handleClose={closeTagMenu} loadingList={loading}
-            handleLeadTagUpdate={handleLeadTagUpdate} handleTagsUpdate={handleTagsUpdate} handleDeleteTag={handleDeleteTag} />
-    </>)
-
-}
-
-interface TagsMenuProps {
-    leadId: number,
-    tagList?: LeadTag[],
-    leadTags: LeadTag[],
-    menuAnchor: null | HTMLElement,
-    handleClose: () => void,
-    pageComponentProps: {
-        totalPages: number;
-        page: number;
-        handlePage: (_: React.ChangeEvent<unknown, Element>, value: number) => void;
-    },
-    handleLeadTagUpdate: (tags: LeadTag[]) => void,
-    handleTagsUpdate: (modifiedTag?: LeadTag) => void
-    handleDeleteTag: (deletedTag: LeadTag) => Promise<unknown>,
-    loadingList?: boolean
-}
-const LeadTagsMenu = ({ leadId, tagList, leadTags, menuAnchor, handleClose, pageComponentProps,
-    handleLeadTagUpdate, handleTagsUpdate, handleDeleteTag, loadingList = false }: TagsMenuProps) => {
-
-    const originalSelectedIds = useMemo(() => leadTags.map(tag => tag.id), [leadTags])
-
-    const [selectedIds, setSelectedIds] = useState<number[]>(originalSelectedIds)
-
-    const isListChanged = useMemo(() =>
-        JSON.stringify(originalSelectedIds) !== JSON.stringify(selectedIds),
-        [originalSelectedIds, selectedIds])
-
-    const handleCheckboxToggle = (id: number) => {
-        const idx = selectedIds.findIndex(sel => sel === id)
-        const idsCopy = [...selectedIds]
-        if (idx === -1) {
-            idsCopy.splice(idx, 0, id) //Agrega
-        } else {
-            idsCopy.splice(idx, 1) //Elimina
-        }
-        setSelectedIds(idsCopy)
-    }
-
-    const onSaveTags = () => {
-        return updateLeadTags(selectedIds, leadId)
-            .then(res => {
-                showToast("Etiquetas del lead actualizadas con éxito")
-                handleLeadTagUpdate(res.tags)
-                handleClose()
-            })
+    /** Asigna al lead una etiqueta ya existente (elegida de las sugerencias), sin crear nada nuevo. */
+    const handleAssignExisting = (tag: LeadTag) => {
+        const newTagIds = [...lead.tags.map(t => t.id), tag.id]
+        return updateLeadTags(newTagIds, lead.id)
+            .then(res => handleLeadTagUpdate(res.tags))
             .catch(e => showCommonErrorToast(e))
     }
 
-    const { fnWithLoading: saveTagsLoad, loading: loadingSave } = useLoading(onSaveTags)
+    /**
+     * Confirma el nombre escrito a mano (Enter o clic afuera, sin haber elegido una sugerencia). Si
+     * ya existe una etiqueta con ese nombre (sin importar mayúsculas) en la organización, se reutiliza
+     * esa (se ignora el color elegido) en vez de crear una duplicada.
+     */
+    const handleCreateOrAssign = (name: string, color: string) => {
+        const trimmed = name.trim()
+        if (!trimmed) return
 
-    const [formAnchor, setFormAnchor] = useState<null | HTMLElement>(null);
+        const alreadyAssigned = lead.tags.some(tag => tag.name.toLowerCase() === trimmed.toLowerCase())
+        if (alreadyAssigned) return
 
-    const menuRef = useRef(null)
+        const existing = tagList.find(tag => tag.name.toLowerCase() === trimmed.toLowerCase())
+        if (existing) return handleAssignExisting(existing)
 
-    const [editTag, setEditTag] = useState<null | LeadTag>(null)
-
-    const toggleCreateTag = () => {
-        setEditTag(null)
-        setFormAnchor(menuRef.current)
-    }
-    const toggleEditTag = (tag: LeadTag) => {
-        setEditTag(tag)
-        setFormAnchor(menuRef.current)
-    }
-
-    const onDeleteTag = async (tag: LeadTag | null) => {
-        if (!tag) return
-        return deleteTag(tag.id).then(() => {
-            handleDeleteTag(tag).then(() => {
-                showToast(`Etiqueta "${tag.name}" eliminada definitivamente`)
-            })
-        })
-    }
-    const [deletingTag, setDeletingTag] = useState<LeadTagDetailed | null>(null)
-
-    const handleSetDeletingTag = (tag: LeadTag) => {
-        setDeletingTag({ ...tag, active: true } as LeadTagDetailed)
+        return createTag({ name: trimmed, color }).then(newTag => {
+            setTagList(prev => [...prev, newTag])
+            return handleAssignExisting(newTag)
+        }).catch(e => showCommonErrorToast(e))
     }
 
     return (
-        <>
-            <Popover disableScrollLock disableAutoFocus id="tags-menu" elevation={3}
-                anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleClose}
-                anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'center',
-                }}
-                transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'center',
-                }}
-            >
-                <Stack ref={menuRef} spacing={1} useFlexGap sx={{ p: 1 }}>
-                    <Typography variant="h4" component="h3" sx={{ pt: 1, px: 1 }}>Asignar Etiquetas</Typography>
-                    <LoadingScreenWrapper loading={loadingList} sx={{ width: "15rem", height: "10rem" }}>
-                        <List sx={{ maxHeight: "30rem", minWidth: "15rem", maxWidth: "25rem", overflowY: "auto" }} dense >
-                            {
-                                tagList?.map(tag => (
-                                    <CustomListItem key={`list-${tag.id}`} disablePadding
-                                        secondaryAction={
-                                            <Stack direction="row" sx={{ mr: -1 }}>
-                                                <CommonIconButton title="Modificar" actionType='MODIFY'
-                                                    size='small' tooltipSize="small" onClick={() => toggleEditTag(tag)} />
-                                                <CommonIconButton title="Eliminar" actionType='CLOSE'
-                                                    color="error" size='small' tooltipSize="small" onClick={() => handleSetDeletingTag(tag)} />
-                                            </Stack>
-                                        }
-                                    >
-                                        <ListItemButton onClick={() => handleCheckboxToggle(tag.id)} sx={{ py: .25 }}>
-                                            <ListItemIcon>
-                                                <Checkbox checked={selectedIds.includes(tag.id)} disableRipple
-                                                    edge="start" sx={{ py: 0 }} onChange={() => handleCheckboxToggle(tag.id)} />
-                                            </ListItemIcon>
-                                            <ListItemText sx={{ my: 0, mr: 3 }} primary={
-                                                <CustomChip chipColor={tag.color} label={tag.name} sx={{ width: "100%" }} />
-                                            } />
-                                        </ListItemButton>
-                                    </CustomListItem>
-                                ))
-                            }
-                        </List >
-                        {pageComponentProps.totalPages > 1 &&
-                            <PaginationComponent {...pageComponentProps} />
-                        }
-                    </LoadingScreenWrapper>
-                    <ButtonGroup fullWidth>
-                        <CommonButton actionType='CREATE' onClick={toggleCreateTag} variant='outlined' fullWidth disabled={loadingSave}>
-                            Agregar
-                        </CommonButton>
-                        {isListChanged &&
-                            <CommonButton actionType='SAVE' onClick={saveTagsLoad} variant='contained' fullWidth loading={loadingSave}>
-                                Guardar
-                            </CommonButton>
-                        }
-                    </ButtonGroup >
-                </Stack >
-            </Popover >
-            <TagFormMenuWrapper formAnchor={formAnchor} handleClose={() => setFormAnchor(null)} handleTagsUpdate={handleTagsUpdate} existingTag={editTag} />
-            <DisableConfirmDialog entity={deletingTag} clearEntity={() => setDeletingTag(null)} idModal='del-tag'
-                onConfirm={() => onDeleteTag(deletingTag)} entityTypeName="la etiqueta" onlyDelete />
-        </>
+        <Stack spacing={.5}>
+            <Typography variant="caption" color="text.secondary" sx={SECTION_LABEL_SX}>Etiquetas</Typography>
+            <Stack direction="row" spacing={.75} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center", width: "100%" }}>
+                {lead.tags.map(tag =>
+                    <CustomChip key={`lead-${tag.id}`} size="small" chipColor={tag.color} defaultColor="secondary"
+                        label={tag.name} onDelete={() => handleUnassignTag(tag)} />
+                )}
+                <InlineTagAdder tagList={availableTags} onCreateOrAssign={handleCreateOrAssign}
+                    onSelectExisting={handleAssignExisting} disabled={loadingTags} />
+            </Stack>
+        </Stack>
     )
 }
 
+interface InlineTagAdderProps {
+    //Etiquetas disponibles (de la organización, que el lead todavía no tiene) para sugerir mientras se escribe.
+    tagList: LeadTag[]
+    onCreateOrAssign: (name: string, color: string) => void
+    onSelectExisting: (tag: LeadTag) => void
+    disabled?: boolean
+}
+
+/**
+ * Chip "Agregar" que, al hacer clic, se convierte en un campo de texto + un botón de color al
+ * costado. Mientras se escribe, se sugieren etiquetas existentes con nombre similar para elegir en
+ * vez de crear una nueva. Enter o clic afuera (con texto cargado, sin elegir sugerencia) crea/asigna
+ * la etiqueta escrita; Escape cancela.
+ */
+const InlineTagAdder = ({ tagList, onCreateOrAssign, onSelectExisting, disabled = false }: InlineTagAdderProps) => {
+    const [adding, setAdding] = useState(false)
+    const [draft, setDraft] = useState("")
+    const [color, setColor] = useState(DEFAULT_TAG_COLOR)
+    //Mientras el popover del color está abierto, hay que ignorar el blur del campo de texto (si no,
+    //se cerraría el campo justo al intentar abrir el selector de color).
+    const [pickerOpen, setPickerOpen] = useState(false)
+    const inputRef = useRef<HTMLInputElement>(null)
+
+    const trimmedDraft = draft.trim()
+    const suggestions = trimmedDraft
+        ? tagList.filter(tag => tag.name.toLowerCase().includes(trimmedDraft.toLowerCase()))
+        : []
+
+    const reset = () => {
+        setAdding(false)
+        setDraft("")
+        setColor(DEFAULT_TAG_COLOR)
+    }
+
+    const confirm = () => {
+        const value = trimmedDraft
+        reset()
+        if (value) onCreateOrAssign(value, color)
+    }
+
+    const selectSuggestion = (tag: LeadTag) => {
+        reset()
+        onSelectExisting(tag)
+    }
+
+    if (!adding) {
+        //CustomChip (usado para los tags en sí) pinta siempre un relleno de color + borde de color,
+        //sin importar el `variant` que se le pase — por eso este botón usa el Chip de MUI "a secas",
+        //para lograr un contorno realmente trazado (outlined + dashed) sobre fondo transparente. Se
+        //replican a mano el padding/alto/fontSize/radio que usa CustomChip en tamaño "small" para que
+        //este chip quede del mismo tamaño que las etiquetas de al lado.
+        return (
+            <Chip icon={<AddIcon fontSize="inherit" />} label="Agregar" size="small" variant="outlined"
+                onClick={disabled ? undefined : () => setAdding(true)}
+                sx={{
+                    height: "auto", padding: "1px 0px", fontSize: ".75rem", fontWeight: 500, borderRadius: ".75rem",
+                    borderStyle: "dashed", color: "text.secondary", cursor: disabled ? "default" : "pointer",
+                    "& .MuiChip-label": { paddingLeft: "8px", paddingRight: "8px" },
+                }} />
+        )
+    }
+
+    return (
+        <Box sx={{ position: "relative" }}>
+            <Stack direction="row" spacing={.5} sx={{ alignItems: "center" }}>
+                <TextField
+                    inputRef={inputRef}
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    onBlur={() => { if (!pickerOpen) confirm() }}
+                    autoFocus
+                    size="small"
+                    placeholder="Nueva etiqueta"
+                    aria-label="Nueva etiqueta"
+                    onKeyDown={e => {
+                        const native = e.nativeEvent as unknown as { isComposing?: boolean, keyCode?: number }
+                        if (e.key === "Enter") {
+                            if (native.isComposing || native.keyCode === 229) return
+                            e.preventDefault()
+                            confirm()
+                        }
+                        if (e.key === "Escape") reset()
+                    }}
+                    sx={{ width: 160, "& .MuiInputBase-input": { py: .5, fontSize: 13 } }}
+                />
+                <InlineColorPickerButton color={color} onChange={setColor} ariaLabel="Elegir color de etiqueta"
+                    onOpenChange={open => {
+                        setPickerOpen(open)
+                        //Al cerrar el picker (con el check, o clickeando afuera de él), el foco vuelve
+                        //al campo de texto para poder seguir escribiendo el nombre de la etiqueta.
+                        if (!open) requestAnimationFrame(() => inputRef.current?.focus())
+                    }} />
+            </Stack>
+            {suggestions.length > 0 && (
+                <Paper elevation={3} sx={{
+                    position: "absolute", top: "100%", left: 0, mt: .5, zIndex: 20,
+                    minWidth: 180, maxWidth: 260, maxHeight: 220, overflowY: "auto"
+                }}>
+                    <List dense disablePadding>
+                        {suggestions.map(tag => (
+                            <ListItemButton key={tag.id} dense
+                                //Evita que el blur del campo de texto cierre todo antes de que llegue a
+                                //procesarse el clic sobre la sugerencia.
+                                onMouseDown={e => e.preventDefault()}
+                                onClick={() => selectSuggestion(tag)}>
+                                <CustomChip size="small" chipColor={tag.color} label={tag.name} sx={{ pointerEvents: "none" }} />
+                            </ListItemButton>
+                        ))}
+                    </List>
+                </Paper>
+            )}
+        </Box>
+    )
+}

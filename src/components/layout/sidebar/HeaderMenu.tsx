@@ -2,7 +2,8 @@ import React, { memo, useState } from 'react'
 import MaterialUISwitch from './ThemeSlider';
 import { useUserContext } from 'src/stores/UserContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { Avatar, Box, Button, Divider, FormControlLabel, IconButton, ListItemIcon, ListItemText, Menu, MenuItem, Stack, Typography } from '@mui/material'
+import { Box, Button, Divider, FormControlLabel, IconButton, ListItemIcon, ListItemText, Menu, MenuItem, Stack, Typography } from '@mui/material'
+import { UserAvatar } from 'src/components/ui/details/UserAvatar'
 import { useColorScheme, useTheme } from '@mui/material/styles';
 import { AccountCircle, Check, PersonOutlined, PersonAddOutlined } from '@mui/icons-material';
 import MoreIcon from '@mui/icons-material/More';
@@ -145,7 +146,7 @@ const HeaderMenu = memo(() => {
                     aria-haspopup="true"
                     color="inherit"
                 >
-                    <Avatar sx={{ color: palette.secondary.dark, backgroundColor: palette.secondary.light }} />
+                    <UserAvatar name={fullName || user?.email || "?"} />
                 </IconButton>
                 <Stack>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{fullName || user?.email}</Typography>
@@ -170,7 +171,7 @@ const HeaderMenu = memo(() => {
                     aria-haspopup="true"
                     onClick={handleProfileMenuOpen}
                 >
-                    <Avatar sx={{ color: palette.secondary.dark, backgroundColor: palette.secondary.light }} />
+                    <UserAvatar name={fullName || user.email} />
                 </IconButton>
             </Box>
             <Box sx={{ display: { xs: 'flex', md: 'none' } }}>

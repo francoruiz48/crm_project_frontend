@@ -17,6 +17,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import LockIcon from '@mui/icons-material/Lock';
 import NewTabLink from 'src/components/ui/details/NewTabLink';
 import { v4 } from 'uuid';
 
@@ -288,17 +289,28 @@ export const ListValues = memo(({ value, idFieldValue, type, maxItems = false, i
 
     return (
         <Stack direction="row" spacing={.5} useFlexGap sx={{ flexWrap: "wrap" }}>
-            {visibleItems.map(val =>
-                <CustomChip
-                    key={`${idFieldValue}-${val.id}`}
-                    label={getLabel(val)} title={getLabel(val)}
-                    chipColor="secondary" size="small"
-                    {...(isNav && {
-                        component: RouterLink, to: getLink(val),
-                        onClick: STOP_PROPAGATION
-                    })}
-                />
-            )}
+            {visibleItems.map(val => {
+                //Un lead relacionado (campo tipo LEAD) puede pertenecer a una campaña a la que el
+                //usuario actual no tiene acceso. El backend ya lo redacta (related_leads viene con
+                //restricted=true y field_values recortado a solo los campos title_order, ver
+                //RelatedLeadResponse) — acá solo evitamos el link de navegación (llevaría a un 404)
+                //y avisamos por qué con un tooltip, en vez de dejarlo como un chip normal.
+                const restricted = type === "Lead" && Boolean((val as Lead).restricted)
+                return (
+                    <ChipTooltip key={`${idFieldValue}-${val.id}`} show={restricted}
+                        title="No tenés acceso a la campaña de este lead." color="secondary" size="small">
+                        <CustomChip
+                            label={getLabel(val)} title={restricted ? undefined : getLabel(val)}
+                            icon={restricted ? <LockIcon fontSize="inherit" /> : undefined}
+                            chipColor="secondary" size="small"
+                            {...(isNav && !restricted && {
+                                component: RouterLink, to: getLink(val),
+                                onClick: STOP_PROPAGATION
+                            })}
+                        />
+                    </ChipTooltip>
+                )
+            })}
             {overflowCount > 0 &&
                 <CustomChip chipColor="secondary" size="small"
                     label={`${overflowCount} más`} />

@@ -6,7 +6,7 @@ import { GenericSidebar, SidebarContentWrapper, SidebarContentActionsWrapper } f
 import ACTION_ICONS from "shared/ui/buttons/ActionIcons"
 import CommonButton from "shared/ui/buttons/CommonButton"
 import { useLoading } from "src/hooks/useLoading"
-import { getLeadFields, updateLeadFieldTitle } from "src/features/leadFields/leadFieldServices"
+import { getLeadFields, updateLeadFieldTitle, updateLeadFieldSubtitle } from "src/features/leadFields/leadFieldServices"
 import { LeadTitleConfigPreview } from "./LeadTitleConfigPreview"
 import { showCommonErrorToast, showToast } from "src/utils/feedback"
 import type { LeadFieldDetailed, LeadFieldValueDetailed } from "src/types/leadFields"
@@ -32,7 +32,12 @@ export const isFieldValidForTitle = (field: LeadFieldDetailed) =>
 interface TitleConfigForm {
     order1: LeadFieldDetailed | null
     order2: LeadFieldDetailed | null
-    order3: LeadFieldDetailed | null
+    //Subtítulo: línea secundaria debajo del título (ej. Cargo + Empresa). Mismo mecanismo que el
+    //título (subtitle_order), pero con solo 2 slots — alcanza para el caso de uso pensado y evita
+    //complicar más este formulario. A diferencia del título, es opcional: no tiene equivalente a
+    //"Sin título" si queda vacío, simplemente no se muestra nada.
+    subOrder1: LeadFieldDetailed | null
+    subOrder2: LeadFieldDetailed | null
 }
 
 interface LeadTitleConfigSidebarProps {
@@ -73,7 +78,8 @@ export const LeadTitleConfigSidebar = ({ open, onClose, campaignId, fieldValues,
     const defaultValues = useMemo(() => ({
         order1: fields.find(f => f.title_order === 1) ?? null,
         order2: fields.find(f => f.title_order === 2) ?? null,
-        order3: fields.find(f => f.title_order === 3) ?? null,
+        subOrder1: fields.find(f => f.subtitle_order === 1) ?? null,
+        subOrder2: fields.find(f => f.subtitle_order === 2) ?? null,
     }), [fields])
 
     const { control, handleSubmit, reset, setError, formState: { errors } } = useForm<TitleConfigForm>({ defaultValues })
@@ -84,10 +90,14 @@ export const LeadTitleConfigSidebar = ({ open, onClose, campaignId, fieldValues,
 
     const order1Val = useWatch({ control, name: "order1" })
     const order2Val = useWatch({ control, name: "order2" })
-    const order3Val = useWatch({ control, name: "order3" })
+    const subOrder1Val = useWatch({ control, name: "subOrder1" })
+    const subOrder2Val = useWatch({ control, name: "subOrder2" })
 
-    const watchedFields = [order1Val, order2Val, order3Val]
+    const watchedFields = [order1Val, order2Val]
     const selectedFields = watchedFields.filter(Boolean) as LeadFieldDetailed[]
+
+    const watchedSubFields = [subOrder1Val, subOrder2Val]
+    const selectedSubFields = watchedSubFields.filter(Boolean) as LeadFieldDetailed[]
 
     //Alerts
     const optionalFields = selectedFields.filter(f => !f.required)
@@ -96,18 +106,24 @@ export const LeadTitleConfigSidebar = ({ open, onClose, campaignId, fieldValues,
     const disabledSelectedFields = selectedFields.filter(f => !f.active)
     const hasDisabledField = disabledSelectedFields.length > 0
 
+    const disabledSelectedSubFields = selectedSubFields.filter(f => !f.active)
+    const hasDisabledSubField = disabledSelectedSubFields.length > 0
+
     //Options
     const activeFields = useMemo(() => fields.filter(f => f.active), [fields])
 
-    const slot1Options = activeFields.filter(f => f.id !== order2Val?.id && f.id !== order3Val?.id)
-    const slot2Options = activeFields.filter(f => f.id !== order1Val?.id && f.id !== order3Val?.id)
-    const slot3Options = activeFields.filter(f => f.id !== order1Val?.id && f.id !== order2Val?.id)
+    const slot1Options = activeFields.filter(f => f.id !== order2Val?.id)
+    const slot2Options = activeFields.filter(f => f.id !== order1Val?.id)
+
+    const subSlot1Options = activeFields.filter(f => f.id !== subOrder2Val?.id)
+    const subSlot2Options = activeFields.filter(f => f.id !== subOrder1Val?.id)
 
     const getOptionLabel = (option: LeadFieldDetailed) => `${option.name} — ${option.field_type.description}`
     const getOptionKey = (option: LeadFieldDetailed) => String(option.id)
 
     const onSubmit = useCallback(async (data: TitleConfigForm) => {
         const orderMap = new Map<number, number | null>()
+        const subOrderMap = new Map<number, number | null>()
 
         if (selectedFields.length === 0) {
             setError("root", { message: "Debe seleccionarse por lo menos un campo" })
@@ -121,10 +137,14 @@ export const LeadTitleConfigSidebar = ({ open, onClose, campaignId, fieldValues,
 
         if (data.order1) orderMap.set(data.order1.id, 1)
         if (data.order2) orderMap.set(data.order2.id, 2)
-        if (data.order3) orderMap.set(data.order3.id, 3)
+
+        //El subtítulo es opcional (a diferencia del título), no exige mínimo de campos
+        if (data.subOrder1) subOrderMap.set(data.subOrder1.id, 1)
+        if (data.subOrder2) subOrderMap.set(data.subOrder2.id, 2)
 
         //Lista de cambios a enviar a backend
         const updates: { fieldId: number, newOrder: number | null }[] = []
+        const subUpdates: { fieldId: number, newOrder: number | null }[] = []
 
         for (const field of fields) {
             const newOrder = orderMap.get(field.id)
@@ -139,16 +159,28 @@ export const LeadTitleConfigSidebar = ({ open, onClose, campaignId, fieldValues,
             else if (oldOrder !== newOrder) {
                 updates.push({ fieldId: field.id, newOrder })
             }
+
+            //Mismo tratamiento, en paralelo, para subtitle_order.
+            const newSubOrder = subOrderMap.get(field.id)
+            const oldSubOrder = field.subtitle_order
+            if (newSubOrder === undefined) {
+                if (oldSubOrder !== null) {
+                    subUpdates.push({ fieldId: field.id, newOrder: null })
+                }
+            } else if (oldSubOrder !== newSubOrder) {
+                subUpdates.push({ fieldId: field.id, newOrder: newSubOrder })
+            }
         }
 
-        if (updates.length === 0) {
+        if (updates.length === 0 && subUpdates.length === 0) {
             onClose()
             return
         }
 
-        const results = await Promise.all(updates.map(u =>
-            updateLeadFieldTitle(u.newOrder, u.fieldId)
-        ))
+        const results = await Promise.all([
+            ...updates.map(u => updateLeadFieldTitle(u.newOrder, u.fieldId)),
+            ...subUpdates.map(u => updateLeadFieldSubtitle(u.newOrder, u.fieldId)),
+        ])
         const resultRecord: Record<number, LeadFieldDetailed> = results.reduce(
             (acc, field) => {
                 acc[field.id] = field
@@ -156,7 +188,7 @@ export const LeadTitleConfigSidebar = ({ open, onClose, campaignId, fieldValues,
             }, {} as Record<number, LeadFieldDetailed>
         )
         if (onSave) onSave(resultRecord)
-        showToast("Configuración de título actualizada con éxito")
+        showToast("Configuración de título y subtítulo actualizada con éxito")
         onClose()
     }, [fields, onClose, onSave, selectedFields.length, disabledSelectedFields.length, setError])
 
@@ -165,12 +197,16 @@ export const LeadTitleConfigSidebar = ({ open, onClose, campaignId, fieldValues,
     const autocompleteSlots = [
         { name: "order1" as const, label: "Campo 1", options: slot1Options },
         { name: "order2" as const, label: "Campo 2", options: slot2Options },
-        { name: "order3" as const, label: "Campo 3", options: slot3Options },
+    ]
+
+    const subAutocompleteSlots = [
+        { name: "subOrder1" as const, label: "Campo 1", options: subSlot1Options },
+        { name: "subOrder2" as const, label: "Campo 2", options: subSlot2Options },
     ]
 
     return (
         <GenericSidebar isSidebarOpen={open} closeSidebar={onClose}>
-            <SidebarContentWrapper title="Configurar Título" subtitle="Renombrar Lead"
+            <SidebarContentWrapper title="Configurar Título y Subtítulo" subtitle="Renombrar Lead"
                 icon={ACTION_ICONS.RENAME}>
                 <SidebarContentActionsWrapper
                     actions={
@@ -247,6 +283,49 @@ export const LeadTitleConfigSidebar = ({ open, onClose, campaignId, fieldValues,
                                     </CustomAlert>
                                 )}
                                 <LeadTitleConfigPreview selectedFields={selectedFields} fieldValues={titleFieldValues} />
+
+                                <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
+                                    Subtítulo (opcional): se muestra debajo del título, en el detalle del lead
+                                    y en las tarjetas del tablero. Ej: Cargo + Empresa.
+                                </Typography>
+
+                                {subAutocompleteSlots.map((slot, idx) => (
+                                    <ControlledAutocomplete
+                                        key={slot.name}
+                                        control={control}
+                                        name={slot.name}
+                                        label={slot.label}
+                                        options={slot.options}
+                                        getOptionLabel={getOptionLabel}
+                                        getOptionKey={getOptionKey}
+                                        returnField={null}
+                                        size="medium"
+                                        required={false}
+                                        disabled={fields.length === 0}
+                                        errorMessage={(watchedSubFields[idx] && !watchedSubFields[idx]?.active) ? "Campo Deshabilitado" : undefined}
+                                        placeholder="Seleccionar campo..."
+                                        renderOption={(props: React.HTMLAttributes<HTMLLIElement> & { key: React.Key }, option: LeadFieldDetailed) => {
+                                            const { key, ...liProps } = props
+                                            return (
+                                                <Box component="li" key={key} {...liProps}>
+                                                    <Stack direction="row" spacing={1} sx={{ flexGrow: 1, alignItems: "center" }}>
+                                                        <Typography variant="body2" sx={{ width: "100%" }}>{option.name}</Typography>
+                                                        {!option.required && (
+                                                            <CustomChip label="Opcional" size="small" chipColor="warning" />
+                                                        )}
+                                                        <CustomChip label={option.field_type.description} size="small" chipColor="secondary" />
+                                                    </Stack>
+                                                </Box>
+                                            )
+                                        }}
+                                    />
+                                ))}
+
+                                {hasDisabledSubField && (
+                                    <CustomAlert severity="warning" sx={{ py: 0 }}>
+                                        Hay campos deshabilitados en el subtítulo. No se mostrarán hasta que se habiliten.
+                                    </CustomAlert>
+                                )}
                             </Stack>
                         </form>
                     </LoadingScreenWrapper>

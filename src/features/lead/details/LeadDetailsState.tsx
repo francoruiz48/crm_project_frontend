@@ -1,13 +1,13 @@
 import {
-    Box, Divider, List, ListItemButton, ListSubheader, Popover, Stack, TextField, Tooltip, Typography
+    Divider, List, ListItemButton, ListSubheader, Popover, Stack, TextField, Tooltip, Typography
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react'
+import { useCallback, useEffect, useState, type MouseEvent } from 'react'
 import GenericPaper from 'src/components/layout/container/GenericPaper'
 import CustomChip from 'src/components/ui/details/CustomChip'
 import CommonButton from 'shared/ui/buttons/CommonButton'
 import { useLoading } from 'src/hooks/useLoading'
-import { getLeadFlowStates, getNextFlowState } from 'src/features/leadFlows/leadFlowServices/FlowService'
+import { getNextFlowState } from 'src/features/leadFlows/leadFlowServices/FlowService'
 import { CATEGORY_CONFIG } from 'src/features/leadFlows/leadFlowServices/leadFlowUtils'
 import type { LeadContactState, LeadContactStateDetailed } from 'src/types/orgProperties'
 import type { LeadState, LeadStateDetailed, StateCategory } from 'src/types/leadFlow'
@@ -19,6 +19,8 @@ import { getColorShades } from 'src/utils/formatters'
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents'
 import CancelIcon from '@mui/icons-material/Cancel'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 
 interface LeadDetailsState {
     lead: LeadDetailed,
@@ -32,7 +34,6 @@ const SECTION_LABEL_SX = { fontWeight: 600, textTransform: "uppercase" as const,
 export const LeadDetailsState = ({ lead, contactState, flowState, updateLeadInfo }: LeadDetailsState) => {
 
     const [nextFlowStates, setNextFlowStates] = useState<LeadState[]>([])
-    const [allFlowStates, setAllFlowStates] = useState<LeadState[]>([])
     const [contactStates, setContactStates] = useState<LeadContactState[]>([])
 
     useEffect(() => {
@@ -43,17 +44,8 @@ export const LeadDetailsState = ({ lead, contactState, flowState, updateLeadInfo
     useEffect(() => {
         getNextFlowState(flowState.id)
             .then(res => setNextFlowStates(res.data))
-    }, [flowState])
-
-    // Trae TODOS los estados del flujo (ordenados) para poder dibujar el "camino" completo,
-    // no solo el estado actual y los siguientes posibles.
-    useEffect(() => {
-        getLeadFlowStates({ lead_flow_id: flowState.lead_flow_id, only_active: true, page_size: 0, order_by: "order", ascending: true })
-            .then(res => setAllFlowStates(res.items))
             .catch(e => showCommonErrorToast(e))
-    }, [flowState.lead_flow_id])
-
-    const reachableStateIds = useMemo(() => new Set(nextFlowStates.map(s => s.id)), [nextFlowStates])
+    }, [flowState])
 
     const [contactAnchor, setContactAnchor] = useState<Element | null>(null)
     const [stepperAnchor, setStepperAnchor] = useState<Element | null>(null)
@@ -76,29 +68,27 @@ export const LeadDetailsState = ({ lead, contactState, flowState, updateLeadInfo
 
     return (
         <Stack spacing={2} sx={{ width: "100%" }}>
-            {allFlowStates.length > 0 &&
-                <Stack spacing={.5}>
-                    <Typography variant="caption" color="text.secondary" sx={SECTION_LABEL_SX}>
-                        Estado de Flujo
-                    </Typography>
-                    <FlowStatePath states={allFlowStates} currentStateId={flowState.id} reachableStateIds={reachableStateIds}
-                        onSelectState={(state, anchor) => { setStepperTarget(state); setStepperAnchor(anchor) }} />
-                    <Popover
-                        id="flow-state-path-popover"
-                        open={Boolean(stepperAnchor)}
-                        anchorEl={stepperAnchor}
-                        onClose={closeStepperPopover}
-                        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                        transformOrigin={{ vertical: 'top', horizontal: 'center' }}
-                    >
-                        {stepperTarget &&
-                            <StateChangeList key={stepperTarget.id} title="Actualizar Estado de Flujo" leadId={lead.id}
-                                options={[]} initialSelected={stepperTarget}
-                                onClose={closeStepperPopover} onChange={handleFlowChange} submit={changeFlowState} />
-                        }
-                    </Popover>
-                </Stack>
-            }
+            <Stack spacing={.5}>
+                <Typography variant="caption" color="text.secondary" sx={SECTION_LABEL_SX}>
+                    Estado de Flujo
+                </Typography>
+                <FlowStateChips currentState={flowState} nextStates={nextFlowStates}
+                    onSelectState={(state, anchor) => { setStepperTarget(state); setStepperAnchor(anchor) }} />
+                <Popover
+                    id="flow-state-path-popover"
+                    open={Boolean(stepperAnchor)}
+                    anchorEl={stepperAnchor}
+                    onClose={closeStepperPopover}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                    transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                >
+                    {stepperTarget &&
+                        <StateChangeList key={stepperTarget.id} title="Actualizar Estado de Flujo" leadId={lead.id}
+                            options={[]} initialSelected={stepperTarget}
+                            onClose={closeStepperPopover} onChange={handleFlowChange} submit={changeFlowState} />
+                    }
+                </Popover>
+            </Stack>
 
             <Stack spacing={.5} sx={{ alignItems: "start" }}>
                 <Typography variant="caption" color="text.secondary" sx={SECTION_LABEL_SX}>
@@ -138,70 +128,59 @@ const getCategoryIcon = (category: StateCategory, sx?: object) => {
     }
 }
 
-interface FlowStatePathProps {
-    states: LeadState[],
-    currentStateId: number,
-    reachableStateIds: Set<number>,
+interface FlowStateChipsProps {
+    currentState: LeadStateDetailed,
+    nextStates: LeadState[],
     onSelectState: (state: LeadState, anchor: HTMLElement) => void,
 }
 
 /**
- * Muestra el flujo completo de estados como una barra de segmentos horizontal (basada en el
- * orden guardado en cada LeadState), en vez de un solo chip suelto que no dejaba ver en qué
- * parte del proceso está el lead ni qué tan lejos queda cada estado. El segmento del estado
- * actual se resalta, los ya recorridos quedan rellenos, y solo los estados alcanzables desde
- * el actual (según las transiciones configuradas en el editor de flujo) son clickeables para
- * cambiar de estado.
+ * Antes esto era una barra de segmentos con el flujo completo (todos los estados posibles, en
+ * orden), pero terminaba mostrando de más: la mayoría no son relevantes en un momento dado, y los
+ * nombres no entraban en el espacio disponible. Ahora, con más espacio disponible en esta columna
+ * (se sacó la sección fija de "Creación de Lead" y se reordenaron los bloques), se muestra
+ * directamente el estado actual (resaltado con un halo de su color, como brillaba el segmento
+ * activo en la versión anterior) y, a los costados, un chip por cada estado al que se puede pasar
+ * desde acá (según las transiciones configuradas en el editor de flujo) — con su nombre visible.
+ * Los estados con `order` menor al actual (retroceder en el flujo) se muestran a la IZQUIERDA con
+ * flecha hacia atrás; los de `order` mayor (avanzar) se muestran a la DERECHA con flecha hacia
+ * adelante. Si el order de alguno es null no hay forma de saber la dirección, así que por defecto
+ * se trata como "hacia adelante".
  */
-const FlowStatePath = ({ states, currentStateId, reachableStateIds, onSelectState }: FlowStatePathProps) => {
+const FlowStateChips = ({ currentState, nextStates, onSelectState }: FlowStateChipsProps) => {
     const theme = useTheme()
-    const currentIndex = states.findIndex(s => s.id === currentStateId)
-    const currentState = currentIndex >= 0 ? states[currentIndex] : undefined
-    const currentShades = currentState
-        ? getColorShades(currentState.color || CATEGORY_CONFIG[currentState.category]?.color || "secondary", theme)
-        : undefined
+
+    const currentColor = currentState.color || CATEGORY_CONFIG[currentState.category]?.color || "secondary"
+    const currentShades = getColorShades(currentColor, theme)
+
+    const isBackward = (state: LeadState) =>
+        currentState.order !== null && state.order !== null && state.order < currentState.order
+
+    const byOrder = (a: LeadState, b: LeadState) => (a.order ?? 0) - (b.order ?? 0)
+    const backwardStates = nextStates.filter(isBackward).sort(byOrder)
+    const forwardStates = nextStates.filter(state => !isBackward(state)).sort(byOrder)
+
+    const renderStateChip = (state: LeadState, direction: "back" | "forward") => (
+        <Tooltip key={state.id} title={direction === "back" ? `Volver a "${state.name}"` : `Marcar como "${state.name}"`}>
+            <CustomChip chipColor={state.color || CATEGORY_CONFIG[state.category]?.color || "secondary"}
+                icon={direction === "back" ? <ArrowBackIcon fontSize="inherit" /> : <ArrowForwardIcon fontSize="inherit" />}
+                label={state.name}
+                onClick={(e: MouseEvent<HTMLElement>) => onSelectState(state, e.currentTarget)}
+                sx={{ cursor: "pointer" }} />
+        </Tooltip>
+    )
 
     return (
-        <Stack spacing={1} sx={{ width: "100%" }}>
-            <Stack direction="row" spacing={.5} sx={{ width: "100%" }}>
-                {states.map((state, idx) => {
-                    const isCurrent = state.id === currentStateId
-                    const isPast = currentIndex >= 0 && idx < currentIndex
-                    const isReachable = reachableStateIds.has(state.id)
-                    const isClickable = isReachable && !isCurrent
-                    const shades = getColorShades(state.color || CATEGORY_CONFIG[state.category]?.color || "secondary", theme)
-                    const filled = isPast || isCurrent
-
-                    return (
-                        <Tooltip key={state.id} title={isClickable ? `Marcar como "${state.name}"` : state.name}>
-                            <Box component={isClickable ? "button" : "div"} type={isClickable ? "button" : undefined}
-                                onClick={isClickable ? (e: MouseEvent<HTMLElement>) => onSelectState(state, e.currentTarget) : undefined}
-                                sx={{
-                                    flex: 1, height: ".6rem", minWidth: "1.5rem", p: 0, m: 0, border: "none",
-                                    borderRadius: "1rem", font: "inherit",
-                                    backgroundColor: filled ? shades.MAIN : theme.alpha(shades.MAIN, .18),
-                                    opacity: (isReachable || filled) ? 1 : .45,
-                                    outline: isCurrent ? `2px solid ${theme.alpha(shades.MAIN, .35)}` : "none",
-                                    outlineOffset: "2px",
-                                    cursor: isClickable ? "pointer" : "default",
-                                    transition: "all 150ms ease",
-                                    "&:hover": isClickable ? {
-                                        filter: "brightness(1.15)",
-                                        transform: "scaleY(1.4)",
-                                    } : undefined,
-                                }} />
-                        </Tooltip>
-                    )
-                })}
-            </Stack>
-            {currentState &&
-                <Stack direction="row" spacing={.5} sx={{ alignItems: "center" }}>
-                    {getCategoryIcon(currentState.category, { fontSize: "1rem", color: currentShades?.MAIN })}
-                    <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                        {currentState.name}
-                    </Typography>
-                </Stack>
-            }
+        <Stack direction="row" spacing={.75} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center" }}>
+            {backwardStates.map(state => renderStateChip(state, "back"))}
+            <CustomChip chipColor={currentColor}
+                icon={getCategoryIcon(currentState.category, { fontSize: "inherit" }) ?? undefined}
+                label={currentState.name}
+                sx={{
+                    fontWeight: 700,
+                    boxShadow: `0 0 0 3px ${theme.alpha(currentShades.MAIN, .35)}`,
+                }} />
+            {forwardStates.map(state => renderStateChip(state, "forward"))}
         </Stack>
     )
 }

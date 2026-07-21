@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import { CommentInstance } from "./LeadComments"
-import { RegisteredTextInput } from "shared/ui/forms/CustomInputs"
+import { FormErrorMessage } from "shared/ui/forms/FormFeedback"
 import CommonButton from "shared/ui/buttons/CommonButton"
 import { useLoading } from "src/hooks/useLoading"
 import type { LeadComment, LeadCommentPost } from "src/types/leads"
@@ -8,10 +8,10 @@ import { createComment, updateComment } from "./leadActivitiesService"
 import { setFormErrors } from "src/utils/forms"
 import { showToast } from "src/utils/feedback"
 import { useForm } from "react-hook-form"
-import { Box, Grid, Stack } from "@mui/material"
-import { alpha, styled, useTheme } from "@mui/material/styles"
-import { ControlledColorPicker } from "src/components/ui/forms/ColorPicker"
-import { getColorShades } from "src/utils/formatters"
+import { Box, Stack, TextField, Typography } from "@mui/material"
+import { UserAvatar } from "shared/ui/details/UserAvatar"
+import { useUserContext } from "src/stores/UserContext"
+import { formatUserFullName } from "src/utils/formatters"
 
 interface CommentFromNoteProps {
     leadId: number,
@@ -22,8 +22,6 @@ interface CommentFromNoteProps {
 
 export const UpdateCommentFromNote = ({ existingComment, leadId, onUpdate, onClose }: CommentFromNoteProps) => {
 
-    const [color, setColor] = useState<string>(existingComment?.color ?? "secondary")
-
     const postComment = ((data: LeadCommentPost) => {
         return updateComment({ ...data }, existingComment.id).then((res) => {
             onUpdate(res)
@@ -32,48 +30,26 @@ export const UpdateCommentFromNote = ({ existingComment, leadId, onUpdate, onClo
     })
 
     return (
-        <Grid container sx={{ justifyContent: "end" }}>
-            <Grid size="grow">
-                <CommentInstance color={color} onDelete={() => onClose()}
-                    title={existingComment ? "Modificar Comentario" : "Agregar Comentario"}>
-                    <CommentForm existingComment={existingComment} leadId={leadId} submit={postComment}
-                        onClose={() => onClose()} setColor={setColor} size="small" />
-                </CommentInstance>
-            </Grid>
-        </Grid>
+        <CommentInstance comment={existingComment} onDelete={onClose} title="Modificar comentario">
+            <CommentForm existingComment={existingComment} leadId={leadId} submit={postComment}
+                onClose={onClose} size="small" />
+        </CommentInstance>
     )
 }
-
-const NewCommentBox = styled(Box)(({ theme, color = "secondary" }) => {
-    const colorShades = getColorShades(color ?? "secondary", theme)
-    const OPACITY = .12
-    return [{
-        border: "1px solid",
-        borderColor: alpha(colorShades.MAIN, .5),
-        backgroundColor: alpha(colorShades.LIGHT, OPACITY),
-        width: "100%",
-        "& .MuiInputBase-root": {
-            backgroundColor: theme.palette.background.paper,
-        }
-    },
-    //Invierte los tonos en darkmode
-    theme.applyStyles('dark', {
-        backgroundColor: alpha(colorShades.DARKER, OPACITY),
-        borderColor: alpha(colorShades.DARK, .5),
-    })
-    ]
-})
 
 interface CommentWrapperProps {
     leadId: number,
     onCreate: (com: LeadComment) => void,
 }
 
+/**
+ * Composer arriba de la lista (antes iba abajo). Restyle minimalista: avatar del usuario actual +
+ * campo de texto sin recuadro de color alrededor. El selector de color por comentario se sacó del
+ * formulario (ver nota en `CommentForm`): no aportaba funcionalidad clara y quedaba raro en la burbuja.
+ */
 export const CreateCommentWrapper = ({ leadId, onCreate }: CommentWrapperProps) => {
 
-    const [color, setColor] = useState<string>("secondary")
-
-    const { palette } = useTheme()
+    const { user } = useUserContext()
 
     const postComment = ((data: LeadCommentPost) => {
         return createComment(data).then(res => {
@@ -82,11 +58,14 @@ export const CreateCommentWrapper = ({ leadId, onCreate }: CommentWrapperProps) 
         })
     })
 
+    const userName = formatUserFullName(user) ?? "Vos"
+
     return (
-        <Box sx={{ width: "100%", bgcolor: alpha(palette.background.default, .5), borderRadius: 3 }} >
-            <NewCommentBox color={color} sx={{ boxShadow: "inherit", borderRadius: 3, py: 2, px: 3 }}>
-                <CommentForm leadId={leadId} submit={postComment} setColor={setColor} size="medium" />
-            </NewCommentBox>
+        <Box sx={{ display: "flex", gap: 1.5 }}>
+            <UserAvatar name={userName} size={36} />
+            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <CommentForm leadId={leadId} submit={postComment} size="medium" isNew />
+            </Box>
         </Box>
     )
 }
@@ -96,19 +75,30 @@ interface CommentFormProps {
     leadId: number,
     submit: (data: LeadCommentPost) => Promise<void>,
     onClose?: () => void,
-    setColor: React.Dispatch<React.SetStateAction<string>>,
-    size?: "small" | "medium"
+    size?: "small" | "medium",
+    isNew?: boolean,
 }
 
-const CommentForm = ({ existingComment, leadId, onClose, submit, setColor, size = "medium" }: CommentFormProps) => {
+//Nota: `color` ya no se expone en el formulario (el usuario decidió que no aporta funcionalidad y
+//resultaba raro visualmente). El campo se deja intacto en el backend (`LeadCommentBase.color`) por
+//si en el futuro se le encuentra un uso, pero como acá no se incluye en `defaultValues` ni se
+//registra ningún input para él, nunca viaja en el payload de creación/edición: en edición el backend
+//aplica `exclude_unset=True`, así que el color ya guardado de comentarios viejos queda intacto.
+const CommentForm = ({ existingComment, leadId, onClose, submit, size = "medium", isNew = false }: CommentFormProps) => {
 
     const defaultValues = useMemo(() => ({
         lead_id: leadId,
-        content: existingComment?.content,
-        color: existingComment?.color ?? "secondary"
+        // Antes era `existingComment?.content` (sin fallback): al crear un comentario nuevo eso
+        // queda en `undefined`, y react-hook-form no limpia un input registrado (uncontrolled)
+        // cuando `reset()` recibe `undefined` para esa clave — el texto ya tipeado quedaba pegado
+        // en el campo después de guardar. Con `""` como valor concreto, `reset(defaultValues)`
+        // sí vacía el campo tras crear el comentario.
+        content: existingComment?.content ?? "",
     }), [existingComment, leadId])
 
-    const { control, register, handleSubmit, reset, setError, formState: { errors } } = useForm<LeadCommentPost>({ defaultValues })
+    const { register, handleSubmit, reset, watch, setError, formState: { errors } } = useForm<LeadCommentPost>({ defaultValues })
+
+    const contentValue = watch("content")
 
     const onSubmit = ((data: LeadCommentPost) => {
         return submit(data)
@@ -122,18 +112,34 @@ const CommentForm = ({ existingComment, leadId, onClose, submit, setColor, size 
     const { fnWithLoading: submitLoad, loading } = useLoading(onSubmit)
 
     return (
-        <form onSubmit={handleSubmit(submitLoad)} >
-            <Stack spacing={1} sx={{ alignItems: "start", justifyContent: "end" }}>
-                <RegisteredTextInput register={register} name={"content"} label="Comentario"
-                    errorMessage={errors.content?.message} size={size} multiline />
-                <Stack direction="row" spacing={1} useFlexGap sx={{ justifyContent: "space-between", flexWrap: "wrap", width: "100%" }}>
-                    <ControlledColorPicker control={control} name="color" size={size} row onBeforeChange={setColor} />
-                    <CommonButton actionType="SAVE" variant="contained" color="primary" loading={loading}
-                        type="submit" size={size} sx={{ ml: "auto" }}>
-                        Guardar
+        <form onSubmit={handleSubmit(submitLoad)}>
+            <Stack spacing={1}>
+                <TextField {...register("content")} placeholder="Escribí un comentario para el equipo…"
+                    error={!!errors.content?.message} multiline minRows={isNew ? 2 : 1} fullWidth size={size}
+                    onKeyDown={e => {
+                        //Ctrl/Cmd + Enter envía, igual que en la referencia.
+                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                            handleSubmit(submitLoad)()
+                        }
+                    }} />
+                {errors.content?.message && typeof errors.content.message === "string" &&
+                    <FormErrorMessage>{errors.content.message}</FormErrorMessage>
+                }
+                <Stack direction="row" spacing={1.5} useFlexGap
+                    sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+                    {isNew ?
+                        <Typography variant="caption" color="text.secondary">
+                            Ctrl/Cmd + Enter para enviar
+                        </Typography>
+                        : <span />
+                    }
+                    <CommonButton actionType={isNew ? "CREATE" : "SAVE"} variant="contained" color="primary" loading={loading}
+                        type="submit" size={size} disabled={isNew && !contentValue?.trim()}>
+                        {isNew ? "Comentar" : "Guardar"}
                     </CommonButton>
-                </Stack >
-            </Stack >
-        </form >
+                </Stack>
+            </Stack>
+        </form>
     )
 }

@@ -3,7 +3,7 @@ import { CommonIconButton } from "shared/ui/buttons/CommonIconButton"
 import { SelectableTableRow } from "shared/ui/lists/CustomTableRow"
 import { EnabledIcon } from "shared/ui/lists/Icons"
 import type { LeadFieldDetailed } from "src/types/leadFields"
-import { Accordion, AccordionDetails, Box, Checkbox, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, useTheme, type Palette } from "@mui/material"
+import { Accordion, AccordionDetails, Box, Checkbox, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, useTheme, type Palette } from "@mui/material"
 import React from 'react'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import type { ReorderFieldsIds } from "./LeadFieldList"
@@ -15,6 +15,8 @@ import { DisableConfirmDialog } from "src/components/ui/feedback/ConfirmationDia
 import { getFieldsBySections } from "./leadFieldUtils"
 import { ColoredAccordionSummary } from "src/components/layout/container/ColoredHeaders"
 import GenericPaper from "src/components/layout/container/GenericPaper"
+import { updateFieldSection } from "../orgProperties/fieldSections/fieldSectionsServices"
+import { showCommonErrorToast } from "src/utils/feedback"
 
 const MIN_FIELDS = 10
 
@@ -29,14 +31,45 @@ interface LeadFieldTableSectionsProps {
     checkedItemsArray: LeadFieldDetailed[];
     addItem: (item: LeadFieldDetailed | LeadFieldDetailed[]) => void;
     removeItem: (item: LeadFieldDetailed | LeadFieldDetailed[]) => void;
+    onSectionRenamed: (sectionId: number, newName: string) => void;
 }
 
 export const LeadFieldTableSections = ({ leadFields, newFieldsBySectionIds, setNewFieldsBySectionIds, handleActive, isReordering,
-    handleSidebarWrapper, checkedItems, checkedItemsArray, addItem, removeItem }: LeadFieldTableSectionsProps) => {
+    handleSidebarWrapper, checkedItems, checkedItemsArray, addItem, removeItem, onSectionRenamed }: LeadFieldTableSectionsProps) => {
 
     const { palette } = useTheme()
     const [showAll, setShowAll] = useState<boolean>(false)
     const [openTableId, setOpenTableId] = useState<number | null>(null)
+
+    //-------------------------- Renombrar sección con doble clic sobre su nombre --------------------------
+    //Se guarda tanto el id de la sección en edición como el borrador de texto (en vez de mutar
+    //directamente `newFieldsBySectionIds`) para no interferir con el estado de reordenamiento.
+    const [editingSectionId, setEditingSectionId] = useState<number | null>(null)
+    const [editingSectionName, setEditingSectionName] = useState("")
+
+    const startEditingSectionName = useCallback((sectId: number, currentName: string) => {
+        setEditingSectionId(sectId)
+        setEditingSectionName(currentName)
+    }, [])
+
+    const cancelEditingSectionName = useCallback(() => {
+        setEditingSectionId(null)
+        setEditingSectionName("")
+    }, [])
+
+    const saveEditingSectionName = useCallback((sectId: number, currentColor: string | undefined, originalName: string) => {
+        const trimmed = editingSectionName.trim()
+        //Sin cambios (o vacío): no hace falta llamar al backend.
+        if (!trimmed || trimmed === originalName) return cancelEditingSectionName()
+        //Sale del modo edición ya mismo (optimista), antes de esperar la respuesta: si no, un Enter
+        //seguido de un blur casi inmediato (o viceversa) dispararía el guardado dos veces, porque el
+        //campo seguiría montado y con el mismo texto "distinto al original" hasta que la promesa
+        //resuelva y recién ahí se llame a cancelEditingSectionName.
+        cancelEditingSectionName()
+        return updateFieldSection({ name: trimmed, color: currentColor ?? "primary" }, sectId)
+            .then(res => onSectionRenamed(sectId, res.name))
+            .catch(e => showCommonErrorToast(e, "No se ha podido renombrar la sección"))
+    }, [editingSectionName, cancelEditingSectionName, onSectionRenamed])
 
     // Deshabilitación de campos
     const [deletingField, setDeletingField] = useState<LeadFieldDetailed | null>(null)
@@ -91,7 +124,41 @@ export const LeadFieldTableSections = ({ leadFields, newFieldsBySectionIds, setN
                                         onClick={stopPropagationEvent()}
                                         onDragStart={() => handleDragStart(idx)} sx={{ cursor: "grab", px: 1.5, minWidth: 0 }} />
                                 }
-                                <Typography variant="h3" sx={{ py: .5, flexGrow: 1 }}>{section.sectName}</Typography>
+                                {editingSectionId === section.sectId ? (
+                                    <TextField
+                                        autoFocus
+                                        variant="standard"
+                                        value={editingSectionName}
+                                        onChange={e => setEditingSectionName(e.target.value)}
+                                        //Evita que el clic/doble-clic dentro del campo (posicionar el
+                                        //cursor, seleccionar texto) burbujee hasta el AccordionSummary
+                                        //y pliegue/despliegue la sección mientras se está escribiendo.
+                                        onClick={stopPropagationEvent()}
+                                        onDoubleClick={stopPropagationEvent()}
+                                        onKeyDown={e => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault()
+                                                saveEditingSectionName(section.sectId, leadFieldsData.sectionData.color, section.sectName)
+                                            }
+                                            if (e.key === "Escape") {
+                                                e.preventDefault()
+                                                cancelEditingSectionName()
+                                            }
+                                        }}
+                                        onBlur={() => saveEditingSectionName(section.sectId, leadFieldsData.sectionData.color, section.sectName)}
+                                        sx={{ flexGrow: 1, py: .5, "& .MuiInputBase-input": { fontSize: "1.25rem", fontWeight: 500 } }} />
+                                ) : (
+                                    <Typography variant="h3" sx={{ py: .5, flexGrow: 1, cursor: isReordering ? "default" : "text" }}
+                                        //El nombre de la sección deja de reaccionar al clic simple (no
+                                        //pliega/despliega si se toca justo el texto), para que un doble
+                                        //clic pueda entrar en modo edición sin que el acordeón parpadee
+                                        //abriéndose y cerrándose de paso. El resto del encabezado (fondo,
+                                        //checkbox, flecha) sigue plegando/desplegando con un clic normal.
+                                        onClick={stopPropagationEvent()}
+                                        onDoubleClick={isReordering ? undefined : stopPropagationEvent(() => startEditingSectionName(section.sectId, section.sectName))}>
+                                        {section.sectName}
+                                    </Typography>
+                                )}
                                 {sectionCheckedItems > 0 &&
                                     <Typography variant="body1" sx={{ fontStyle: "italic", py: .5, flexGrow: 1 }}>
                                         {`- ${sectionCheckedItems === 1 ? "1 item seleccionado" : `${sectionCheckedItems} items seleccionados`} `}

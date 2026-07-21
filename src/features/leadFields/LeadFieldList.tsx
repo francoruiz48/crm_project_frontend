@@ -187,6 +187,16 @@ export const LeadFieldList = memo(({ campaign, cmpSidebarMode, closeCmpSidebar }
             .catch(e => showCommonErrorToast(e))
     }, [campaign.id, checkedItemsArray, fetchFieldsLoad, removeAllItems])
 
+    //Actualiza el nombre de la sección en todos los LeadField que la referencian, tras renombrarla
+    //desde el doble clic en LeadFieldTableSections (evita tener que refetchear toda la lista).
+    const handleSectionRenamed = useCallback((sectionId: number, newName: string) => {
+        setLeadFields(prev => prev?.map(field =>
+            field.lead_field_section.id === sectionId
+                ? { ...field, lead_field_section: { ...field.lead_field_section, name: newName } }
+                : field
+        ) ?? prev)
+    }, [])
+
     return (
         <Stack spacing={3}>
             <Stack useFlexGap direction="row" spacing={2}
@@ -224,7 +234,7 @@ export const LeadFieldList = memo(({ campaign, cmpSidebarMode, closeCmpSidebar }
             <LoadingScreenWrapper loading={fieldsLoading}>
                 {leadFields && newFieldsBySectionIds.length > 0 ?
                     <LeadFieldTableSections isReordering={isReordering} newFieldsBySectionIds={newFieldsBySectionIds} setNewFieldsBySectionIds={setNewFieldsBySectionIds}
-                        handleActive={handleActive} leadFields={leadFields} handleSidebarWrapper={handleSidebarWrapper} {...checkBoxProps} />
+                        handleActive={handleActive} leadFields={leadFields} handleSidebarWrapper={handleSidebarWrapper} onSectionRenamed={handleSectionRenamed} {...checkBoxProps} />
                     :
                     <Stack spacing={2} sx={{ justifyContent: "center", alignItems: "center" }}>
                         <Typography variant="h4">No se han encontrado campos para esta campaña...</Typography>

@@ -4,6 +4,7 @@ import { colorTypesArray } from "src/types/mui-theme.d"
 import { FormErrorMessage } from "./FormFeedback"
 import { getColorShades } from "src/utils/formatters"
 import CircleIcon from '@mui/icons-material/Circle';
+import CheckIcon from '@mui/icons-material/Check';
 import { HexColorInput, HexColorPicker } from "react-colorful";
 import { useMemo, useState } from "react"
 
@@ -132,5 +133,65 @@ export const ColorPickerButton = <T extends FieldValues>({ field, size, colorNam
                 border: field.value === colorName ? `2px solid ${paletteColor.LIGHTER}` : ""
             }} />
         </IconButton>
+    )
+}
+
+interface InlineColorPickerButtonProps {
+    color: string,
+    onChange: (color: string) => void,
+    //Se notifica cuando el popover se abre/cierra, para que quien lo use pueda, por ejemplo, ignorar
+    //el blur de un campo de texto vecino mientras el picker está abierto (si no, el campo se cerraría
+    //solo con intentar abrir el selector de color).
+    onOpenChange?: (open: boolean) => void,
+    ariaLabel?: string,
+}
+
+/**
+ * Botón circular de color libre (hex/RGB) + popover con `HexColorPicker`/`HexColorInput` y un botón
+ * de check para cerrarlo. Extraído de `LeadTagsMenu.tsx` (donde nació para el selector de color de
+ * una etiqueta nueva) para poder reutilizarlo en cualquier otro lado que necesite el mismo patrón de
+ * "campo de texto + color libre al costado" (ej. crear una sección de campos nueva desde el selector).
+ */
+export const InlineColorPickerButton = ({ color, onChange, onOpenChange, ariaLabel = "Elegir color" }: InlineColorPickerButtonProps) => {
+    const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+
+    const handleOpen = (e: React.MouseEvent<HTMLElement>) => {
+        setAnchor(e.currentTarget)
+        onOpenChange?.(true)
+    }
+    const handleClose = () => {
+        setAnchor(null)
+        onOpenChange?.(false)
+    }
+
+    return (
+        <>
+            {/* onMouseDown con preventDefault evita que el campo de texto vecino pierda foco (blur) al
+                clickear este botón, lo que lo cerraría antes de llegar a abrir el picker. */}
+            <IconButton size="small" sx={{ p: "2px" }} aria-label={ariaLabel}
+                onMouseDown={e => e.preventDefault()} onClick={handleOpen}>
+                <CircleIcon sx={{
+                    color, fontSize: "1.1rem", borderRadius: "50%",
+                    border: "1px solid", borderColor: "divider"
+                }} />
+            </IconButton>
+            <Popover disableScrollLock open={Boolean(anchor)} anchorEl={anchor} onClose={handleClose}
+                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+                transformOrigin={{ vertical: "top", horizontal: "center" }}>
+                <Stack spacing={1} sx={{ p: 1.5 }}>
+                    <HexColorPicker color={color} onChange={onChange} />
+                    <Stack direction="row" spacing={.5} sx={{ alignItems: "center" }}>
+                        <HexColorInput color={color} onChange={onChange} prefixed
+                            style={{ flexGrow: 1, width: "100%", padding: "4px 8px", borderRadius: 4, border: "1px solid #ccc" }} />
+                        {/* Cierra el selector sin más efecto: el color elegido ya quedó guardado en el
+                            estado de quien usa este botón. */}
+                        <IconButton size="small" color="primary" onMouseDown={e => e.preventDefault()}
+                            onClick={handleClose} aria-label="Confirmar color">
+                            <CheckIcon fontSize="small" />
+                        </IconButton>
+                    </Stack>
+                </Stack>
+            </Popover>
+        </>
     )
 }

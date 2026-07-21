@@ -1,21 +1,20 @@
+/**
+ * Ojo: este archivo ya NO exporta un componente de edición propio. Antes (`LeadPartialUpdate`)
+ * era el formulario que se abría al clickear el lápiz, con Guardar/Cancelar explícitos. Ahora
+ * TODOS los campos se editan inline (clic sobre el valor + autoguardado al perder foco o Enter,
+ * ver `InlineFieldEdit` en `LeadDetailsSections.tsx`), que reutiliza lo de acá: `getUpdatedLead`,
+ * `getValue`, `LeadFormFieldType` y los tipos `PartialFormValue`/`PartialFormProps`. Se dejan en
+ * este archivo porque son los mismos helpers que ya existían, para no duplicar lógica.
+ */
 import { useEffect, useMemo, useState } from "react"
-import type { LeadPostForm, LeadPostFormValues } from "../leadForm/LeadForm"
-import { LeadFieldTypeAvatar } from "features/leadFields/LeadFieldTypeIcon"
-import { CommonIconButton } from "shared/ui/buttons/CommonIconButton"
-import { CustomListItem } from "shared/ui/lists/CustomListItem"
-import { useLoading } from "src/hooks/useLoading"
 import type { LeadFieldDetailed, LeadFieldValueDetailed } from "src/types/leadFields"
 import type { NomenclatorItem } from "src/types/nomenclators"
 import type { Lead, LeadDetailed } from "src/types/leads"
-import { getLeads, updateLead } from "../leadService"
+import { getLeads } from "../leadService"
 import { getNomenclatorItems } from "features/nomenclators/nomenclatorService"
-import { createFormDataFromLead } from "../leadUtils"
-import { setFormErrors } from "src/utils/forms"
 import { getListField } from "src/utils/lists"
-import { showCommonErrorToast, showToast } from "src/utils/feedback"
-import { useForm, type Control, type Path, type UseFormRegister, type UseFormSetValue } from "react-hook-form"
-import { ListItemText, Stack } from "@mui/material"
-import { getTypeOrSpecialTemplates } from "src/features/leadFields/leadFieldUtils"
+import { showCommonErrorToast } from "src/utils/feedback"
+import type { Control, Path, UseFormRegister, UseFormSetValue } from "react-hook-form"
 import { DependentLeadFormSelector, LeadFormRelatedLead, LeadFormSelector } from "../shared/LeadFormMultipleFields"
 import { LeadFormBool, LeadFormDate, LeadFormFile, LeadFormNumber, LeadFormText } from "../shared/LeadFormFields"
 
@@ -57,90 +56,20 @@ export const getValue = (fieldValue: LeadFieldValueDetailed) => {
     return fieldValue.value
 }
 
-interface LeadPartialUpdateProps {
-    fieldValue: LeadFieldValueDetailed,
-    onClose: (id: number) => void,
-    lead: LeadDetailed,
-    updateLeadInfo: (lead: LeadDetailed, reloadAudits?: boolean) => void
-}
-
-export const LeadPartialUpdate = ({ fieldValue, onClose, lead, updateLeadInfo }: LeadPartialUpdateProps) => {
-
-    const fieldData = fieldValue.field
-
-    //Si este campo tiene hijos dependientes (otro campo activo cuyo depends_on_field_id apunta a este), se editan
-    //juntos en la misma transacción: si cambia el valor del padre, el valor ya cargado en el hijo puede dejar de ser
-    //válido, así que se muestra también acá y no se deja guardar sin resolverlo (ver LeadPartialUpdate.tsx en logs).
+/**
+ * Si `fieldValue` tiene campos "hijos" activos (otro campo cuyo depends_on_field_id apunta a
+ * este), se editan juntos en la misma transacción: si cambia el valor del padre, el valor ya
+ * cargado en el hijo puede dejar de ser válido, así que se muestra también en el mismo grupo de
+ * edición y no se deja guardar sin resolverlo. Solo los campos SELECTOR pueden ser padres/hijos
+ * en esta cascada (ver LeadFieldForm.tsx: "Depende del Campo" solo aparece para SELECTOR).
+ */
+export const useFieldCascade = (fieldValue: LeadFieldValueDetailed, lead: LeadDetailed) => {
     const dependentFieldValues = useMemo(() =>
-        lead.field_values.filter(fv => fv.field.active && fv.field.depends_on_field_id === fieldData.id),
-        [lead.field_values, fieldData.id]
+        lead.field_values.filter(fv => fv.field.active && fv.field.depends_on_field_id === fieldValue.field.id),
+        [lead.field_values, fieldValue.field.id]
     )
-
     const allFieldValues = useMemo(() => [fieldValue, ...dependentFieldValues], [fieldValue, dependentFieldValues])
-
-    const defaultValues = useMemo(() => ({
-        values: allFieldValues.map(fv => ({ field_id: fv.field_id, value: getValue(fv) }))
-    }), [allFieldValues])
-
-    const { register, control, setError, setValue, handleSubmit, formState: { errors } } = useForm<PartialFormProps>({ defaultValues })
-
-    const iconCode = getTypeOrSpecialTemplates(fieldData.field_type_code, fieldData.field_template_code)
-
-    const onSubmit = async (data: PartialFormProps) => {
-        const [primary, ...dependents] = data.values
-        if (!primary.value) return
-        //No se deja guardar un campo dependiente obligatorio si quedó vacío tras cambiar el valor del padre
-        const missingIdx = dependents.findIndex((v, idx) => allFieldValues[idx + 1].field.required && !v.value)
-        if (missingIdx !== -1) {
-            setError(`values.${missingIdx + 1}.value`, { message: "Este campo depende del valor que acabás de cambiar: elegí un valor antes de guardar." })
-            return
-        }
-        //Un hijo opcional puede quedar en null tras limpiarse tras el cambio del padre: se envía así a propósito
-        //(el backend lo interpreta como "vaciar el campo" y no valida su dependencia, ver AGENTS.md backend §7)
-        const postData: LeadPostForm = {
-            values: data.values.map((v, idx) => ({ field_id: v.field_id, value: v.value, fieldData: allFieldValues[idx].field } as LeadPostFormValues)),
-        }
-        const formData = createFormDataFromLead(postData)
-        return updateLead(formData, lead.id).then(res => {
-            const newLead = getUpdatedLead(lead, res)
-            if (!newLead) return
-            updateLeadInfo(newLead, true)
-            showToast(dependents.length > 0
-                ? `Campo "${fieldData.name}" modificado con éxito, junto con ${dependents.map((_, idx) => `"${allFieldValues[idx + 1].field.name}"`).join(", ")} (que depende de él).`
-                : `Campo "${fieldData.name}" modificado con éxito.`)
-            onClose(fieldData.id)
-        }).catch((e) => {
-            setFormErrors(e, setError, null, "values.0.value", true)
-        })
-    }
-
-    const { fnWithLoading: submitLoad, loading } = useLoading(onSubmit)
-
-    return (
-        <form onSubmit={handleSubmit(submitLoad)}>
-            <CustomListItem disablePadding alwaysShowSecondary secondaryAction={
-                <Stack direction="row">
-                    {!loading && <CommonIconButton title="Cancelar" actionType="CLOSE" onClick={() => onClose(fieldData.id)}
-                        size="small" tooltipSize="small" color="error" />}
-                    <CommonIconButton title="Guardar" actionType="SAVE" type="submit" loading={loading}
-                        size="small" tooltipSize="small" color="primary" />
-                </Stack>
-            }>
-                <LeadFieldTypeAvatar typeCode={iconCode} subtypeCode={fieldData.field_subtype_code} />
-                <ListItemText sx={{ mr: 9 }}>
-                    <Stack spacing={1.5}>
-                        <LeadFormFieldType register={register} control={control} setValue={setValue} name="values.0.value"
-                            leadField={fieldData} lead={lead} size="small" errorMessage={errors?.values?.[0]?.value?.message} />
-                        {dependentFieldValues.map((depFv, idx) => (
-                            <LeadFormFieldType key={depFv.field_id} register={register} control={control} setValue={setValue}
-                                name={`values.${idx + 1}.value`} leadField={depFv.field} lead={lead} liveParentName="values.0.value"
-                                size="small" errorMessage={errors?.values?.[idx + 1]?.value?.message} />
-                        ))}
-                    </Stack>
-                </ListItemText>
-            </CustomListItem>
-        </form>
-    )
+    return { dependentFieldValues, allFieldValues }
 }
 
 interface LeadFormFieldTypeProps {
@@ -150,8 +79,8 @@ interface LeadFormFieldTypeProps {
     name: Path<PartialFormProps>,
     leadField: LeadFieldDetailed,
     lead: LeadDetailed,
-    //Path del valor del campo padre DENTRO DE ESTE MISMO mini-formulario, cuando el padre se está editando en vivo
-    //junto a este campo (ver LeadPartialUpdate más arriba). Si no viene, este campo depende de un valor ya persistido.
+    //Path del valor del campo padre DENTRO DE ESTE MISMO grupo de edición, cuando el padre se está editando en vivo
+    //junto a este campo (ver useFieldCascade/InlineFieldEdit). Si no viene, este campo depende de un valor ya persistido.
     liveParentName?: Path<PartialFormProps>,
     errorMessage?: string,
     size?: "small" | "medium"

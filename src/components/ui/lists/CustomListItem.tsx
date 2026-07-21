@@ -104,8 +104,13 @@ interface ActionGroupProps {
     closeMenu: () => unknown
 }
 
-/**Muestra las opciones de un item, solo si está en hover, o como un desplegable si es en pantalla tactil. */
-const ListActionMenu = ({ actions, anchorEl, closeMenu }: ActionGroupProps) => {
+/**
+ * Menú desplegable de acciones (ícono + texto por opción). Usado internamente por
+ * `ResponsiveListItem` para su modo táctil ("..." en vez de íconos sueltos), pero también se
+ * exporta suelto para cualquier otro botón de "tres puntos" de la app que necesite el mismo
+ * desplegable sin todo el resto de `ResponsiveListItem` (ej. el menú de acciones del detalle de Lead).
+ */
+export const ListActionMenu = ({ actions, anchorEl, closeMenu }: ActionGroupProps) => {
 
     return (
         <>

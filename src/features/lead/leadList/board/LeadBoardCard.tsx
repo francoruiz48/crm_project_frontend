@@ -3,7 +3,7 @@ import { Card, Typography, Box, Avatar, Stack, Tooltip, alpha } from '@mui/mater
 import PersonIcon from '@mui/icons-material/Person';
 import GroupsIcon from '@mui/icons-material/Groups';
 import type { Lead } from 'src/types/leads';
-import { getLeadTitleArray } from '../../leadUtils';
+import { getLeadTitleArray, getLeadSubtitleArray } from '../../leadUtils';
 import CustomChip from 'src/components/ui/details/CustomChip';
 import { UserAvatar } from 'src/components/ui/details/UserAvatar';
 
@@ -16,8 +16,12 @@ interface LeadBoardCardProps {
 
 export const LeadBoardCard = ({ lead, index, columnColor, observerRef }: LeadBoardCardProps) => {
     const titleArray = getLeadTitleArray(lead);
-    const mainTitle = titleArray[0] || "Sin nombre";
-    const subTitle = titleArray.slice(1).join(" • ");
+    //Antes esto tomaba solo el primer campo del título como "nombre" y dejaba el resto (ej.
+    //Apellido) como subtítulo de relleno, a falta de un subtítulo real. Ahora que existe
+    //subtitle_order (Cargo/Empresa, configurable desde "Configurar título"), el título se muestra
+    //completo y el subtítulo usa ese campo real en su lugar.
+    const mainTitle = titleArray.join(" ") || "Sin nombre";
+    const subTitle = getLeadSubtitleArray(lead).join(" ");
 
     return (
         <Draggable draggableId={String(lead.id)} index={index}>

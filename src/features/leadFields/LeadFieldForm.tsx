@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SidebarContentWrapper, SidebarContentActionsWrapper } from "shared/layout/container/GenericContainer";
 import { ControlledAutocomplete, ControlledRadio } from "shared/ui/forms/CustomMultipleInputs";
 import { ControlledCheckbox, ControlledTextInput } from "shared/ui/forms/CustomInputs";
@@ -9,13 +9,14 @@ import { useLoading } from "src/hooks/useLoading";
 import type { InputMaskTemplate, LeadFieldDetailed, LeadFieldPost, LeadFieldTemplate, LeadFieldTypeDetailed } from "src/types/leadFields";
 import type { Campaign, CampaignDetailed } from "src/types/campaigns";
 import type { NomenclatorDetailed } from "src/types/nomenclators";
+import type { OptionWithAction } from "src/types/shared";
 import { createLeadField, getFieldTemplates, getFieldTypes, getInputMaskTemplates, updateLeadField } from "./leadFieldServices";
 import { getNomenclators } from "../nomenclators/nomenclatorService";
 import { getCampaigns } from "../campaigns/campaignServices";
 import { getFieldDataByType } from "./leadFieldUtils";
 import { setFormErrors } from "src/utils/forms";
-import { showToast } from "src/utils/feedback";
-import { Grid, FormGroup, Stack, Divider, ButtonGroup } from "@mui/material";
+import { showCommonErrorToast, showToast } from "src/utils/feedback";
+import { Box, Grid, FormGroup, Stack, Divider, ButtonGroup, TextField } from "@mui/material";
 import { Controller, useForm, useWatch, type Control, type FieldErrors, type UseFormGetValues, type UseFormSetValue } from "react-hook-form";
 import { InputAdornment, IconButton } from "@mui/material";
 import { getExcelFormulaTemplates } from "./leadFieldServices";
@@ -23,8 +24,13 @@ import type { ExcelFormulaTemplate } from "src/types/leadFields";
 import { FormulaHelperPanel } from "src/components/ui/modals/FormulaHelperModal";
 import FunctionsIcon from '@mui/icons-material/Functions';
 import { FormControl, InputLabel, OutlinedInput, FormHelperText, } from "@mui/material";
-import { getFieldSections } from "../orgProperties/fieldSections/fieldSectionsServices";
+import { createFieldSection, getFieldSections } from "../orgProperties/fieldSections/fieldSectionsServices";
+import { InlineColorPickerButton } from "src/components/ui/forms/ColorPicker";
 import type { LeadFieldSection } from "src/types/orgProperties";
+
+//Mismo color neutro por defecto que usa el picker de color libre de etiquetas nuevas (LeadTagsMenu.tsx),
+//para que el selector de color de una sección nueva arranque igual en toda la app.
+const DEFAULT_SECTION_COLOR = "#64748B"
 
 
 interface LeadFieldSidebarProps {
@@ -183,6 +189,7 @@ export const LeadFieldForm = ({ existingLF, campaign, leadFields, submit, onCanc
           </ButtonGroup>
         }>
         <LeadFieldFormFields templates={fieldTemplates} sections={fieldSections}
+          addSection={section => setFieldSections(prev => [...prev, section])}
           nomenclators={nomenclators} campaigns={campaigns} types={fieldTypes} leadFields={leadFields ?? []}
           errors={errors} control={control} maskTemplates={maskTemplates}
           existingLFId={existingLF?.id} formulas={excelFormulas} setValue={setValue} getValues={getValues}
@@ -196,6 +203,7 @@ interface LeadFieldFormFieldsProps {
   templates: LeadFieldTemplate[];
   maskTemplates: InputMaskTemplate[];
   sections: LeadFieldSection[];
+  addSection: (section: LeadFieldSection) => void;
   types: LeadFieldTypeDetailed[];
   nomenclators: NomenclatorDetailed[];
   campaigns: Campaign[];
@@ -208,10 +216,49 @@ interface LeadFieldFormFieldsProps {
   getValues: UseFormGetValues<LeadFieldPostCreation>;
 }
 
-const LeadFieldFormFields = ({ templates, maskTemplates, sections, types, nomenclators, campaigns, leadFields,
+const LeadFieldFormFields = ({ templates, maskTemplates, sections, addSection, types, nomenclators, campaigns, leadFields,
   control, existingLFId, errors, formulas, setValue, getValues }: LeadFieldFormFieldsProps) => {
 
   const [openFormulaModal, setOpenFormulaModal] = useState(false);
+
+  //-------------------------------- "+ Agregar nueva sección" en el selector de Sección --------------------------------
+  //Se le agrega al listado de opciones una entrada especial de acción (mismo patrón que "+ Agregar
+  //nuevo flujo..." en CampaignForms.tsx). Al elegirla, en vez de seleccionarse como si fuera una
+  //sección real, el propio selector se reemplaza por un campo de texto + un botón de color libre al
+  //costado (mismo patrón que "Agregar" en LeadTagsMenu.tsx), para crear la sección sin salir del
+  //formulario ni abrir un modal aparte.
+  const sectionsWithOption = useMemo<OptionWithAction<LeadFieldSection>[]>(() => [
+    ...sections,
+    { id: "CREATE_SECTION", name: "+ Agregar nueva sección", isAction: true },
+  ], [sections]);
+
+  const [creatingSection, setCreatingSection] = useState(false);
+  const [newSectionName, setNewSectionName] = useState("");
+  const [newSectionColor, setNewSectionColor] = useState(DEFAULT_SECTION_COLOR);
+  //Mientras el popover del color está abierto hay que ignorar el blur del campo de texto (si no, se
+  //cerraría el campo justo al intentar abrir el selector de color).
+  const [sectionColorPickerOpen, setSectionColorPickerOpen] = useState(false);
+  const newSectionInputRef = useRef<HTMLInputElement>(null);
+
+  const cancelNewSection = () => {
+    setCreatingSection(false);
+    setNewSectionName("");
+    setNewSectionColor(DEFAULT_SECTION_COLOR);
+    setSectionColorPickerOpen(false);
+  };
+
+  const submitNewSection = () => {
+    const trimmed = newSectionName.trim();
+    if (!trimmed) return cancelNewSection();
+    return createFieldSection({ name: trimmed, color: newSectionColor })
+      .then(newSection => {
+        addSection(newSection);
+        setValue("lead_field_section_id", newSection.id, { shouldValidate: true, shouldDirty: true });
+        showToast(`Sección "${newSection.name}" creada con éxito`);
+        cancelNewSection();
+      })
+      .catch(e => showCommonErrorToast(e, "No se ha podido crear la sección"));
+  };
   const creationMethod = useWatch({ name: "creation_method", control });
   const inputMaskMethod = useWatch({ name: "input_mask_method", control });
   const creationMethodRadioOptions = [
@@ -261,17 +308,64 @@ const LeadFieldFormFields = ({ templates, maskTemplates, sections, types, nomenc
           />
         </Grid>
         <Grid size="grow" sx={{ minWidth: "20rem", justifyContent: "center" }} >
-          <ControlledAutocomplete
-            name="lead_field_section_id"
-            label="Sección"
-            control={control}
-            options={sections}
-            returnField="id"
-            getOptionLabel={option => option.name!}
-            getOptionKey={option => `${option.id}`}
-            required
-            errorMessage={errors?.lead_field_section_id?.message}
-          />
+          {creatingSection ? (
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              <TextField
+                inputRef={newSectionInputRef}
+                autoFocus
+                fullWidth
+                label="Nueva Sección"
+                value={newSectionName}
+                onChange={e => setNewSectionName(e.target.value)}
+                onBlur={() => { if (!sectionColorPickerOpen) submitNewSection() }}
+                onKeyDown={e => {
+                  if (e.key === "Enter") { e.preventDefault(); submitNewSection(); }
+                  if (e.key === "Escape") { e.preventDefault(); cancelNewSection(); }
+                }}
+              />
+              <InlineColorPickerButton color={newSectionColor} onChange={setNewSectionColor}
+                ariaLabel="Elegir color de la nueva sección"
+                onOpenChange={open => {
+                  setSectionColorPickerOpen(open);
+                  //Al cerrar el picker, el foco vuelve al campo de texto para seguir escribiendo el
+                  //nombre de la sección (mismo patrón que el selector de color de etiquetas nuevas).
+                  if (!open) requestAnimationFrame(() => newSectionInputRef.current?.focus());
+                }} />
+            </Stack>
+          ) : (
+            <ControlledAutocomplete
+              name="lead_field_section_id"
+              label="Sección"
+              control={control}
+              options={sectionsWithOption}
+              returnField="id"
+              getOptionLabel={option => option.name!}
+              getOptionKey={option => `${option.id}`}
+              required
+              errorMessage={errors?.lead_field_section_id?.message}
+              renderOption={(props, option) => {
+                const isAction = (option as OptionWithAction<LeadFieldSection>).isAction;
+                return (
+                  <Box component="li" {...props}
+                    onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
+                    onClick={e => {
+                      e.stopPropagation(); e.preventDefault();
+                      if (isAction) setCreatingSection(true);
+                      else props.onClick?.(e);
+                    }}
+                    sx={{
+                      display: "flex", alignItems: "center", width: "100%",
+                      ...(isAction && {
+                        color: "primary.main", fontWeight: "bold", borderTop: "1px solid",
+                        borderColor: "divider", mt: 0.5, bgcolor: "action.hover",
+                      }),
+                    }}>
+                    {option.name}
+                  </Box>
+                );
+              }}
+            />
+          )}
         </Grid>
         <Grid size="grow" sx={{ minWidth: "20rem", justifyContent: "center" }} >
           <FormGroup row sx={{ my: .5, mx: 1, justifyContent: "space-evenly" }}>

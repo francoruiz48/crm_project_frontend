@@ -6,7 +6,7 @@ import type { LeadTag, LeadTagDetailed, LeadTagPost } from "src/types/orgPropert
 import { setFormErrors } from "src/utils/forms"
 import { showToast } from "src/utils/feedback"
 import { useForm } from "react-hook-form"
-import { ButtonGroup, Popover, Stack, TextField, Typography } from "@mui/material"
+import { ButtonGroup, Stack, TextField, Typography } from "@mui/material"
 import { ControlledColorPicker } from "src/components/ui/forms/ColorPicker"
 import { createTag, updateTag } from "./LeadTagService"
 import { CustomAvatar } from "src/components/ui/details/CustomAvatar"
@@ -48,52 +48,6 @@ export const TagFormSidebarWrapper = ({ existingTag, onClose, onSubmit }: TagFor
             </Stack>
             <LeadTagForm existingTag={existingTag} onCancel={onClose} onSubmit={onPostTag} setColor={setColor} />
         </Stack>
-    )
-}
-
-interface TagFormMenuProps {
-    formAnchor: null | HTMLElement,
-    handleClose: () => void,
-    handleTagsUpdate: (modifiedTag?: LeadTag | undefined) => void,
-    existingTag?: LeadTag | null,
-}
-
-export const TagFormMenuWrapper = ({ existingTag, formAnchor, handleClose, handleTagsUpdate }: TagFormMenuProps) => {
-
-    const onPostTag = (data: LeadTagPost) => {
-        if (existingTag) {
-            return updateTag(data, existingTag.id)
-                .then(res => {
-                    handleTagsUpdate(res)
-                    showToast(`Etiqueta "${res.name}" actualizada con éxito`)
-                    handleClose()
-                })
-        }
-        return createTag(data)
-            .then(res => {
-                handleTagsUpdate()
-                showToast(`Etiqueta "${res.name}" creada con éxito`)
-                handleClose()
-            })
-    }
-
-    return (
-        <Popover disableScrollLock disableAutoFocus id="basic-menu"
-            anchorEl={formAnchor} open={Boolean(formAnchor)} onClose={handleClose}
-            anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-            }}
-            transformOrigin={{
-                vertical: 'top',
-                horizontal: 'left',
-            }}
-        >
-            <Stack spacing={2} sx={{ p: 2 }}>
-                <Typography variant="h4" component="h3">{existingTag ? "Modificar Etiqueta" : "Crear Etiqueta"}</Typography>
-                <LeadTagForm existingTag={existingTag} onCancel={handleClose} onSubmit={onPostTag} popover />
-            </Stack>
-        </Popover >
     )
 }
 

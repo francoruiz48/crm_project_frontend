@@ -6,19 +6,18 @@ import { DisableConfirmDialog } from "src/components/ui/feedback/ConfirmationDia
 import LoadingScreenWrapper from "src/components/ui/feedback/LoadingScreen.tsx"
 import GenericPaper from "shared/layout/container/GenericPaper"
 import TitleAndActive from "shared/ui/details/TitleAndActive"
-import CommonButton from "shared/ui/buttons/CommonButton"
-import { CommonIconButton } from "shared/ui/buttons/CommonIconButton"
+import { ListActionMenu, type ListItemAction } from "shared/ui/lists/CustomListItem"
 import { useLoading } from "src/hooks/useLoading.ts"
 import type { LeadDetailed } from "src/types/leads.ts"
 import type { Campaign } from "src/types/campaigns.ts"
 import { disableLead, enableLead, getLead } from "../leadService.ts"
 import { getCampaign } from "src/features/campaigns/campaignServices.ts"
-import { getLeadTitleArray } from "../leadUtils.ts"
+import { getLeadTitleArray, getLeadSubtitleArray } from "../leadUtils.ts"
 import { LeadTitleConfigSidebar } from "src/features/lead/leadTitleConfig/LeadTitleConfigSidebar"
 import { showCommonErrorToast, showToast } from "src/utils/feedback.ts"
 import { useLeadNavigation } from "../stores/LeadNavigationContext.tsx"
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom"
-import { Grid, Typography, ButtonGroup, Stack, Breadcrumbs, Link, Box, CircularProgress, Fab, Slide, Tooltip, Button } from "@mui/material"
+import { Grid, Typography, Stack, Breadcrumbs, Link, Box, CircularProgress, Fab, Slide, Tooltip, Button, IconButton } from "@mui/material"
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import MailOutlineIcon from '@mui/icons-material/MailOutlined';
@@ -26,6 +25,7 @@ import CallIcon from '@mui/icons-material/Call';
 import EventIcon from '@mui/icons-material/Event';
 import PersonIcon from '@mui/icons-material/Person';
 import GroupsIcon from '@mui/icons-material/Groups';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { LeadDetailsState } from "./LeadDetailsState.tsx"
 import type { LeadFieldDetailed } from "src/types/leadFields.ts"
 import { UserAvatar } from "shared/ui/details/UserAvatar.tsx"
@@ -130,6 +130,11 @@ export const LeadDetailsLayout = () => {
         return getLeadTitleArray(lead)
     }, [lead])
 
+    const leadSubtitle = useMemo(() => {
+        if (!lead) return null
+        return getLeadSubtitleArray(lead)
+    }, [lead])
+
     //reconoce cambios para actualizar la lista de audit
     const [reloadAudit, setReloadAudit] = useState<number>(0)
 
@@ -190,7 +195,7 @@ export const LeadDetailsLayout = () => {
                             {lead &&
                                 <Grid container spacing={2}>
                                     <Grid size="grow" sx={{ minWidth: "20rem", flexGrow: 2 }} >
-                                        <LeadInfo lead={lead} handleActive={() => setIsDeleting(lead)} leadTitle={leadTitle}
+                                        <LeadInfo lead={lead} handleActive={() => setIsDeleting(lead)} leadTitle={leadTitle} leadSubtitle={leadSubtitle}
                                             updateLeadInfo={updateLeadInfo} onOpenTitleConfig={() => setTitleConfigOpen(true)} />
                                     </Grid>
                                     <Grid size="grow" sx={{ minWidth: "22rem", flexGrow: 3 }} component={GenericPaper} >
@@ -228,13 +233,39 @@ interface LeadInfoProps {
     lead: LeadDetailed,
     handleActive: (lead: LeadDetailed) => void,
     leadTitle: (string | undefined)[] | null,
+    //Línea secundaria debajo del título (ej. Cargo + Empresa), configurable desde el mismo panel
+    //de "Configurar título". A diferencia del título, si no hay ningún campo configurado queda
+    //en un arreglo vacío (no "Sin título") y directamente no se muestra nada.
+    leadSubtitle?: (string | undefined)[] | null,
     updateLeadInfo: (lead: LeadDetailed, reloadAudits?: boolean) => void
     onOpenTitleConfig?: () => void
 }
 
-export const LeadInfo = ({ lead, leadTitle, handleActive, updateLeadInfo, onOpenTitleConfig }: LeadInfoProps) => {
+export const LeadInfo = ({ lead, leadTitle, leadSubtitle, handleActive, updateLeadInfo, onOpenTitleConfig }: LeadInfoProps) => {
 
     const titleText = (leadTitle && leadTitle?.length > 0) ? leadTitle?.join(" ") : "Título no encontrado"
+    const subtitleText = (leadSubtitle && leadSubtitle.length > 0) ? leadSubtitle.join(" ") : null
+
+    //Con variant="h1" fijo, un nombre largo pasaba a varias líneas y quedaba muy pesado visualmente
+    //(y el textOverflow: "ellipsis" que tenía antes no hacía nada sin whiteSpace: nowrap +
+    //overflow: hidden). En vez de truncar el nombre, se achica el variant a medida que crece el
+    //texto, así siempre se ve completo pero proporcional al espacio disponible.
+    const titleVariant = titleText.length > 40 ? "h3" : titleText.length > 20 ? "h2" : "h1"
+
+    //Antes había dos íconos sueltos (lápiz para "Configurar título" + basura/restaurar) junto al
+    //título. Se unificaron en un único botón de "tres puntos" con un menú desplegable, para dejar
+    //lugar a futuras acciones sin volver a amontonar íconos ahí (reutiliza ListActionMenu, el mismo
+    //desplegable que ya usa ResponsiveListItem en su modo táctil).
+    const [actionsAnchor, setActionsAnchor] = useState<HTMLElement | null>(null)
+    const titleActions: ListItemAction[] = [
+        ...(onOpenTitleConfig ? [{ actionType: "RENAME", label: "Configurar título", onClick: onOpenTitleConfig } as ListItemAction] : []),
+        {
+            actionType: lead.active ? "DISABLE" : "ENABLE",
+            label: lead.active ? "Eliminar" : "Restaurar",
+            onClick: () => handleActive(lead),
+            color: lead.active ? "error" : "success",
+        },
+    ]
 
     return (
         <Stack spacing={2}>
@@ -244,29 +275,25 @@ export const LeadInfo = ({ lead, leadTitle, handleActive, updateLeadInfo, onOpen
                         <UserAvatar name={titleText} src={lead.picture_avatar_url || undefined} size={56} />
                         <Stack spacing={1} sx={{ flexGrow: 1, minWidth: 0 }}>
                             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                                <Typography sx={{ textOverflow: "ellipsis" }} variant="h1">
+                                <Typography sx={{ wordBreak: "break-word" }} variant={titleVariant}>
                                     {titleText}
                                 </Typography>
-                                {onOpenTitleConfig &&
-                                    <CommonIconButton actionType="RENAME" title="Configurar título"
-                                        onClick={onOpenTitleConfig} size="small" />
-                                }
+                                <IconButton size="small" onClick={e => setActionsAnchor(e.currentTarget)}>
+                                    <MoreVertIcon fontSize="small" />
+                                </IconButton>
+                                <ListActionMenu actions={titleActions} anchorEl={actionsAnchor}
+                                    closeMenu={() => setActionsAnchor(null)} />
                             </Stack>
+                            {subtitleText &&
+                                <Typography variant="body2" color="text.secondary" sx={{ textOverflow: "ellipsis" }}>
+                                    {subtitleText}
+                                </Typography>
+                            }
                         </Stack>
                     </Stack>
                     <LeadQuickActions />
-                    <ButtonGroup fullWidth>
-                        <CommonButton actionType={lead.active ? "DISABLE" : "ENABLE"} variant="outlined"
-                            color={lead.active ? "error" : "success"} onClick={() => handleActive(lead)}>
-                            {lead.active ? "Eliminar" : "Habilitar"}
-                        </CommonButton>
-                        <CommonButton actionType="MODIFY" variant="contained" color="primary"
-                            component={RouterLink} to={`/leads/modify/${lead?.id}`}>
-                            Modificar
-                        </CommonButton>
-                    </ButtonGroup>
-                    <LeadTags lead={lead} updateLeadInfo={updateLeadInfo} />
                     <LeadDetailsState lead={lead} updateLeadInfo={updateLeadInfo} contactState={lead.contact_state} flowState={lead.current_state} />
+                    <LeadTags lead={lead} updateLeadInfo={updateLeadInfo} />
                     <LeadMetaInfo lead={lead} />
                 </Stack>
             </GenericPaper>
@@ -307,25 +334,40 @@ const LeadMetaInfo = ({ lead }: { lead: LeadDetailed }) => {
     const rows: { icon: ReactNode, label: string, value?: string }[] = [
         ...(lead.assigned_to_user_id ? [{ icon: <PersonIcon fontSize="small" />, label: "Usuario asignado" }] : []),
         ...(lead.team_id ? [{ icon: <GroupsIcon fontSize="small" />, label: "Equipo asignado" }] : []),
-        { icon: undefined, label: "Creado", value: formatDate(lead.created_at, "date") },
-        ...(lead.updated_at ? [{ icon: undefined, label: "Última actividad", value: formatDate(lead.updated_at, "date") }] : []),
+        { icon: undefined, label: "Creado", value: formatDate(lead.created_at, "custom", "DD/MM/YYYY HH:mm") },
+        ...(lead.updated_at ? [{ icon: undefined, label: "Última actividad", value: formatDate(lead.updated_at, "custom", "DD/MM/YYYY HH:mm") }] : []),
     ]
 
     return (
-        <Stack spacing={.5} sx={{ width: "100%" }}>
+        // Grid (en vez de una Stack por fila) para que la columna de la etiqueta ("Creado",
+        // "Última actividad", etc.) tenga el mismo ancho en todas las filas, y así los valores
+        // (fechas) queden alineados entre sí sin importar que los textos midan distinto.
+        // Cada fila usa display:"contents" para que sus 3 celdas se acomoden directo en el grid
+        // del padre; por eso siempre se renderizan las 3 (icono/label/valor), aunque estén vacías,
+        // para no correr el conteo de columnas de las filas siguientes.
+        // Las 3 columnas son "auto" (se ajustan a su contenido). Se probó alinear todo el bloque a
+        // la derecha (justifyContent:"end"); el usuario prefirió volver a dejarlo a la izquierda,
+        // conservando igual la alineación entre filas. justifyContent:"start" se pone explícito
+        // (en vez de confiar en el default "normal" del grid) porque ese default terminaba
+        // renderizando el bloque centrado.
+        <Box sx={{ display: "grid", gridTemplateColumns: "auto auto auto", columnGap: 1, rowGap: .5, justifyContent: "start", width: "100%" }}>
             {rows.map(row =>
-                <Stack key={row.label} direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                    {row.icon &&
-                        <Tooltip title={row.label}>
-                            <Stack sx={{ color: "text.secondary" }}>{row.icon}</Stack>
-                        </Tooltip>
-                    }
-                    <Typography variant="caption" color="text.secondary">{row.label}</Typography>
-                    {row.value &&
-                        <Typography variant="caption" sx={{ fontWeight: 600 }}>{row.value}</Typography>
-                    }
-                </Stack>
+                <Box key={row.label} sx={{ display: "contents" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", color: "text.secondary" }}>
+                        {row.icon &&
+                            <Tooltip title={row.label}>
+                                <Box sx={{ display: "flex" }}>{row.icon}</Box>
+                            </Tooltip>
+                        }
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ alignSelf: "center", whiteSpace: "nowrap" }}>
+                        {row.label}
+                    </Typography>
+                    <Typography variant="caption" sx={{ alignSelf: "center", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        {row.value ?? ""}
+                    </Typography>
+                </Box>
             )}
-        </Stack>
+        </Box>
     )
 }
