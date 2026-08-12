@@ -22,6 +22,7 @@ import { Grid, List, ListItemText, Stack, Typography } from '@mui/material'
 import { useOrderSeachList } from 'src/hooks/useOrderSearchLists'
 import { OrderSearchMenu } from 'src/components/ui/lists/OrderMenu'
 import { NoItemsMessage } from 'src/components/ui/lists/NoItemsMessage'
+import { ListAddButton } from 'src/components/ui/buttons/ExpandingButton'
 
 const ORDER_NOM_FIELDS = [
     { name: "name", label: "Orden Alfabético" },
@@ -145,10 +146,8 @@ export const NomenclatorList = () => {
                     <Typography variant="h1">Nomencladores</Typography>
                     {nomenclators && nomenclators.items?.length > 0 &&
                         <Can permission="nomenclator:create">
-                            <CommonButton actionType="CREATE" onClick={() => { handleSidebar("CREATE_NOM", null) }}
-                                sx={{ marginLeft: "auto" }} onlyTooltip>
-                                Agregar
-                            </CommonButton>
+                            <ListAddButton onClick={() => { handleSidebar("CREATE_NOM", null) }}
+                                sx={{ marginLeft: "auto" }} />
                         </Can>
                     }
                 </Stack>

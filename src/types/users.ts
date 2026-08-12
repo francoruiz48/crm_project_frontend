@@ -31,7 +31,7 @@ export interface UserPublic {
 }
 
 export interface UserData extends Metadata {
-    id: number,
+    id: string,
     name: string,
     last_name: string | null,
     email: string,

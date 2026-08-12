@@ -4,18 +4,18 @@ import { Grid, List, Stack, ListItemButton, ListItemIcon, ListItemText, Checkbox
 import { alpha, lighten, useTheme } from '@mui/material/styles';
 import { FieldSectionHeader } from 'shared/ui/forms/FieldSectionHeader';
 
-function not(a: readonly number[], b: readonly number[]) {
+function not(a: readonly string[], b: readonly string[]) {
   return a.filter((value) => !b.includes(value));
 }
 
-function intersection(a: readonly number[], b: readonly number[]) {
+function intersection(a: readonly string[], b: readonly string[]) {
   return a.filter((value) => b.includes(value));
 }
 
 interface LeadColumnSelectorProps<T> {
   originalList: T[],
-  selectedFieldIds: number[],
-  handleSelectedFieldIds: (ids: number[], closeModal?: boolean) => void,
+  selectedFieldIds: string[],
+  handleSelectedFieldIds: (ids: string[], closeModal?: boolean) => void,
   handleClose: () => void,
   showField: keyof T,
   //Si se pasa, cada lista muestra un encabezado de sección (línea divisora + título chico) antes del
@@ -24,17 +24,17 @@ interface LeadColumnSelectorProps<T> {
   getGroupName?: (item: T) => string,
 }
 
-export default function LeadColumnSelector<T extends { id: number }>
+export default function LeadColumnSelector<T extends { id: string, name: string }>
   ({ originalList, selectedFieldIds, handleSelectedFieldIds, handleClose, showField, getGroupName }: LeadColumnSelectorProps<T>) {
 
-  const [checked, setChecked] = React.useState<number[]>([]);
-  const [left, setLeft] = React.useState<number[]>(not(originalList.map(f => f.id), selectedFieldIds) ?? []);
-  const [right, setRight] = React.useState<number[]>(intersection(originalList.map(f => f.id), selectedFieldIds));
+  const [checked, setChecked] = React.useState<string[]>([]);
+  const [left, setLeft] = React.useState<string[]>(not(originalList.map(f => f.id), selectedFieldIds) ?? []);
+  const [right, setRight] = React.useState<string[]>(intersection(originalList.map(f => f.id), selectedFieldIds));
 
   const leftChecked = intersection(checked, left);
   const rightChecked = intersection(checked, right);
 
-  const handleToggle = (value: number) => () => {
+  const handleToggle = (value: string) => () => {
     const currentIndex = checked.indexOf(value);
     const newChecked = [...checked];
 
@@ -74,13 +74,13 @@ export default function LeadColumnSelector<T extends { id: number }>
 
 
   const originalListLookup = React.useMemo(() => {
-    const lookup = new Map<number, T>()
+    const lookup = new Map<string, T>()
     originalList.forEach((item) => lookup.set(item.id, item))
     return lookup
   }, [originalList])
 
-  const handleSetLeft = React.useCallback((list: number[]) => setLeft(list), [])
-  const handleSetRight = React.useCallback((list: number[]) => setRight(list), [])
+  const handleSetLeft = React.useCallback((list: string[]) => setLeft(list), [])
+  const handleSetRight = React.useCallback((list: string[]) => setRight(list), [])
   const handleSetDrag = React.useCallback((newDrag: { idx: number, source: "left" | "right" } | null) =>
     setGlobalDraggedIndex(newDrag), [])
 
@@ -165,13 +165,13 @@ export default function LeadColumnSelector<T extends { id: number }>
 interface props<T> {
   title?: string,
   showField: keyof T,
-  listLookup: Map<number, T>
-  checked: number[],
-  handleToggle: (value: number) => () => void,
-  list: number[],
-  setter: (id: number[]) => void,
-  contraryList: number[],
-  contrarySetter: (id: number[]) => void,
+  listLookup: Map<string, T>
+  checked: string[],
+  handleToggle: (value: string) => () => void,
+  list: string[],
+  setter: (id: string[]) => void,
+  contraryList: string[],
+  contrarySetter: (id: string[]) => void,
   globalDraggedIndex: { idx: number, source: "left" | "right" } | null
   handleSetDrag: (newDrag: {
     idx: number;
@@ -182,7 +182,7 @@ interface props<T> {
 }
 
 
-const CustomList = <T extends { id: number }>({ title, listLookup, handleToggle, showField, checked, isLeft, list, setter, contraryList, contrarySetter, globalDraggedIndex, handleSetDrag, getGroupName }: props<T>) => {
+const CustomList = <T extends { id: string }>({ title, listLookup, handleToggle, showField, checked, isLeft, list, setter, contraryList, contrarySetter, globalDraggedIndex, handleSetDrag, getGroupName }: props<T>) => {
 
   const { palette } = useTheme()
 
@@ -244,7 +244,7 @@ const CustomList = <T extends { id: number }>({ title, listLookup, handleToggle,
             // el mismo grupo, siguiendo el orden ACTUAL de `list` (no se reordena nada acá --
             // ver `getGroupName` en LeadColumnSelectorProps).
             let prevGroupName: string | null = null
-            return list.flatMap((value: number, idx) => {
+            return list.flatMap((value: string, idx) => {
               const labelId = `transfer-list-item-${value}-label`;
               const fieldData = listLookup.get(value)
               const isSelected = globalDraggedIndex?.idx === idx

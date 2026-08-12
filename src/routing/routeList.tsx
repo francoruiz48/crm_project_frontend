@@ -57,7 +57,7 @@ const ROUTE_LIST_OUTLET: RouteListProps[] = [
     ...LEAD_ROUTES,
     { path: "/campaigns/", title: "Campañas", element: <WorkspaceList />, regularNavbar: true, icon: ROUTE_ICONS.CAMPAIGNS, permission: "workspace:view" },
     { path: "/campaigns/:id", title: "Detalle de Campaña", element: <CampaignDetails />, permission: "campaign:view" },
-    { path: "/nomenclators/", title: "Nomencladores", element: <NomenclatorList />, regularNavbar: true, icon: ROUTE_ICONS.NOMENCLATORS, permission: "nomenclator:view" },
+    { path: "/nomenclators/", title: "Nomencladores", element: <NomenclatorList />, permission: "nomenclator:view" },
     { path: "/automations/", title: "Automatizaciones", element: <AutomationList />, regularNavbar: true, icon: ROUTE_ICONS.AUTOMATIONS, permission: "field_automation:view" },
     { path: "/automations/:id", title: "Detalle de Automatización", element: <AutomationPage />, permission: "field_automation:view" },
     { path: "/organizations/", title: "Organizaciones", element: <OrganizationList />, regularNavbar: true, globalNavbar: true, icon: ROUTE_ICONS.ORGANIZATIONS, permission: "organization:view" },

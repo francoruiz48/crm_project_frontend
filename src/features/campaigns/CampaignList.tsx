@@ -18,6 +18,7 @@ import { Link } from "react-router-dom"
 import { Grid, ListItemText, Stack, Typography } from "@mui/material"
 import { useCallback } from "react"
 import { Can } from "src/components/auth/Can"
+import { ListAddButton } from "src/components/ui/buttons/ExpandingButton"
 
 const ORDER_CMP_FIELDS = [
     { name: "name", label: "Orden Alfabético" },
@@ -41,7 +42,7 @@ export const CampaignList = ({ workspace, handleSidebar, closeSidebar }: Campaig
 
     const { fetchParams, changeHandlers } = useOrderSeachList()
 
-    const fetchCampaigns = useCallback((workspaceId: number, page: number, pageSize: number) => {
+    const fetchCampaigns = useCallback((workspaceId: string, page: number, pageSize: number) => {
         return getCampaigns({ workspace_id: workspaceId, detailed: true, page: page || 1, page_size: pageSize, ...fetchParams })
             .then(setCampaigns)
     }, [fetchParams])
@@ -81,9 +82,7 @@ export const CampaignList = ({ workspace, handleSidebar, closeSidebar }: Campaig
                 <Typography variant="h3">Lista de Campañas</Typography>
                 {campaigns && campaigns?.items.length > 0 &&
                     <Can permission="campaign:create">
-                        <CommonButton actionType="CREATE" onClick={() => handleSidebar("CREATE_CMP", workspace)} sx={{ marginLeft: "auto" }} size="small" onlyTooltip>
-                            Agregar
-                        </CommonButton>
+                        <ListAddButton onClick={() => handleSidebar("CREATE_CMP", workspace)} sx={{ marginLeft: "auto" }} size="small" />
                     </Can>
                 }
             </Stack>

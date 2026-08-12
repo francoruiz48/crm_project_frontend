@@ -14,7 +14,7 @@ import { Can } from "src/components/auth/Can"
 interface LeadListContentProps {
     leads: Lead[],
     leadFields: LeadField[],
-    selectedFieldIds: number[],
+    selectedFieldIds: string[],
     activeFilters: number,
     modalProps: {
         openModalId?: string;
@@ -26,9 +26,9 @@ interface LeadListContentProps {
         ascending: boolean;
         handleOrderList: (field: string | number | null) => void;
     },
-    handleSelectedFieldIds: (ids: number[], closeModal?: boolean) => void,
+    handleSelectedFieldIds: (ids: string[], closeModal?: boolean) => void,
     selectCheckboxProps: {
-        checkedItems: Map<number, Lead>;
+        checkedItems: Map<string, Lead>;
         addItem: (item: Lead | Lead[]) => void;
         removeItem: (item: Lead) => void;
         removeAllItems: () => void;
@@ -54,8 +54,8 @@ export const LeadListContent = memo(({ leads, leadFields, selectedFieldIds, acti
     const selectedColumns = useMemo(() => {
         if (!leadFields || leadFields.length === 0) return []
         if (!selectedFieldIds || selectedFieldIds.length === 0) return []
-        return leadFields.filter(leadField => selectedFieldIds.includes(leadField.id))
-            .sort((a, b) => selectedFieldIds.indexOf(a.id) - selectedFieldIds.indexOf(b.id))
+        return leadFields.filter(leadField => selectedFieldIds.includes(`${leadField.id}`))
+            .sort((a, b) => selectedFieldIds.indexOf(`${a.id}`) - selectedFieldIds.indexOf(`${b.id}`))
     }, [leadFields, selectedFieldIds])
 
     //Da los estilos y funcionalidad del drag and drop de columnas, a través de sus ids.

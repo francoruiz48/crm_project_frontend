@@ -19,6 +19,7 @@ import { useUserContext } from 'src/stores/UserContext'
 import { Can } from 'src/components/auth/Can'
 import { useSearchParams } from 'react-router-dom'
 import { List, ListItemText, Stack, Typography } from '@mui/material'
+import { ListAddButton } from 'src/components/ui/buttons/ExpandingButton'
 
 const ORDER_ORG_FIELDS = [
     { name: "name", label: "Orden Alfabético" },
@@ -130,9 +131,7 @@ export const OrganizationList = () => {
                     <Typography variant="h1">Organizaciones</Typography>
                     {organizations && organizations?.length > 0 &&
                         <Can permission="organization:create">
-                            <CommonButton actionType="CREATE" onClick={() => handleSidebar("CREATE_ORG", null)} sx={{ marginLeft: "auto" }} onlyTooltip>
-                                Agregar
-                            </CommonButton>
+                            <ListAddButton onClick={() => handleSidebar("CREATE_ORG", null)} sx={{ marginLeft: "auto" }} />
                         </Can>
                     }
                 </Stack>

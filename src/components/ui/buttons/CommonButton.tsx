@@ -2,7 +2,7 @@ import { cloneElement, type ComponentProps, type ReactNode } from 'react';
 import ACTION_ICONS, { type ActionType } from '../icons/ActionIcons';
 import { ChipTooltip } from '../details/ChipTooltip';
 import type { ColorTypes } from 'src/types/mui-theme.d';
-import { Avatar, Stack, type AvatarProps, Button, type ButtonProps } from '@mui/material'
+import { Avatar, Stack, type AvatarProps, Button, type ButtonProps, Box } from '@mui/material'
 import { styled, useTheme } from '@mui/material/styles';
 
 
@@ -15,7 +15,8 @@ export interface CommonBtnProps extends MuiButtonProps, ButtonProps {
     //Se pasan en btnProps
     component?: React.ElementType,
     to?: string,
-    onlyTooltip?: boolean
+    onlyTooltip?: boolean,
+    variableWidth?: boolean
 }
 
 /**Version de Button que aclara el texto en outlined (dark mode) para aumentar su legibilidad.  */
@@ -37,7 +38,7 @@ const LightButton = styled(Button)(({ theme, color = "primary", variant = "conta
 /**
  * Componente basado en Button, que agrega un ícono a su contenido segun el tipo de acción
  */
-const CommonButton = ({ actionType = "NONE", onlyTooltip = false, loading = false, children, ...btnProps }: CommonBtnProps) => {
+const CommonButton = ({ actionType = "NONE", onlyTooltip = false, loading = false, children, className, ...btnProps }: CommonBtnProps) => {
 
     const color = btnProps.color === "inherit" ? "primary" : (btnProps.color ?? "primary")
 
@@ -54,30 +55,33 @@ const CommonButton = ({ actionType = "NONE", onlyTooltip = false, loading = fals
 
     const actionIcon = loading ? styleIcon("LOADING") : styleIcon(actionType)
 
-    if (onlyTooltip) return (
-        (btnProps.disabled || loading) ?
-            <LightButton variant='contained' disabled={loading} {...btnProps}>
-                <Stack spacing={.5} useFlexGap direction="row" sx={{ alignItems: "center", textAlign: "center" }}>
-                    {actionIcon}
-                </Stack>
-            </LightButton>
-            :
-            <ChipTooltip title={children} color={color} >
-                <LightButton variant='contained' disabled={loading} {...btnProps}>
-                    <Stack spacing={.5} useFlexGap direction="row" sx={{ alignItems: "center", textAlign: "center" }}>
-                        {actionIcon}
-                    </Stack>
-                </LightButton>
-            </ChipTooltip>
-    )
-
     return (
-        <LightButton variant='contained' disabled={loading} {...btnProps}>
-            <Stack spacing={.5} useFlexGap direction="row" sx={{ alignItems: "center", textAlign: "center" }}>
-                {actionIcon}
-                {loading ? "Cargando" : children}
-            </Stack>
-        </LightButton>
+        <Stack direction="row" sx={{ justifyContent: "end" }} className={className}>
+            {onlyTooltip ?
+                (btnProps.disabled || loading) ?
+                    <LightButton variant='contained' disabled={loading} {...btnProps}>
+                        <Stack direction="row" sx={{ alignItems: "center", textAlign: "center" }}>
+                            {actionIcon}
+                        </Stack>
+                    </LightButton>
+                    :
+                    <ChipTooltip title={children} color={color} >
+                        <LightButton variant='contained' disabled={loading} {...btnProps}>
+                            <Stack direction="row" sx={{ alignItems: "center", textAlign: "center" }}>
+                                {actionIcon}
+                            </Stack>
+                        </LightButton>
+                    </ChipTooltip>
+                :
+                <LightButton variant='contained' disabled={loading} {...btnProps}>
+                    <Stack direction="row" sx={{ alignItems: "center", textAlign: "center" }}>
+                        {actionIcon}
+                        <Box>
+                            {loading ? "Cargando" : children}
+                        </Box>
+                    </Stack>
+                </LightButton>}
+        </Stack>
     )
 }
 
@@ -119,3 +123,4 @@ export const CommonAvatar = ({ actionType = "NONE", color = "primary", size = "m
         </Avatar>
     )
 }
+

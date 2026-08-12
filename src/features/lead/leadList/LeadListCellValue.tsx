@@ -4,7 +4,7 @@ import { BoolValue, DateValue, ListValues, ModalValue, NumberValue, StringValue 
 import { getTypeOrSpecialTemplates } from "src/features/leadFields/leadFieldUtils";
 
 interface CellValueProps {
-    leadId: number,
+    leadId: string,
     fieldValue?: LeadFieldValue,
     type?: string | null,
     subtype?: string | null,

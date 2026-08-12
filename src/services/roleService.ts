@@ -8,7 +8,7 @@ export const getRoles = async<T extends ListParams>(params?: T):
     const role = await axiosCRM.get(`roles`, { params })
     return role.data
 }
-export const getRole = async (id: number): Promise<RoleDetailed> => {
+export const getRole = async (id: string): Promise<RoleDetailed> => {
     const role = await axiosCRM.get(`roles/${id}`)
     return role.data
 }

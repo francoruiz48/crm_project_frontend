@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { cloneElement, memo, useCallback, useEffect, useRef, useState } from 'react'
 import { LeadFilters } from '../leadListOptions/LeadFilters'
 import { ViewForm } from '../leadListOptions/LeadViewMenu'
 import PaginationComponent from 'shared/ui/lists/PaginationComponent'
@@ -11,7 +11,7 @@ import type { LeadFilter, LeadListParams, Paginable, DictionaryItem } from 'src/
 import {
     alpha, Box, Button, Collapse, IconButton,
     List, ListItem, ListItemButton, ListItemText, Stack,
-    ToggleButton, ToggleButtonGroup, Tooltip, Typography, useTheme
+    ToggleButton, ToggleButtonGroup, Toolbar, Tooltip, Typography, useTheme
 } from '@mui/material'
 import FilterAltIcon from '@mui/icons-material/FilterAlt'
 import TableChartIcon from '@mui/icons-material/TableChart'
@@ -26,6 +26,7 @@ import LockIcon from '@mui/icons-material/Lock'
 import SaveIcon from '@mui/icons-material/Save'
 import AddIcon from '@mui/icons-material/Add'
 import SortIcon from '@mui/icons-material/Sort'
+import ACTION_ICONS from 'src/components/ui/icons/ActionIcons'
 
 interface LeadSidebarProps {
     campaignId: number | string | null
@@ -47,9 +48,9 @@ interface LeadSidebarProps {
 
 // ── Grupos de visibilidad ─────────────────────────────────────────────────
 const VISIBILITY_GROUPS = [
-    { code: 'PUBLIC',  label: 'Públicas',  icon: PublicIcon,  color: '#16a34a' },  // green
-    { code: 'TEAM',    label: 'Equipo',    icon: PeopleIcon,  color: '#2563eb' },  // blue
-    { code: 'PRIVATE', label: 'Privadas',  icon: LockIcon,    color: '#d97706' },  // amber
+    { code: 'PUBLIC', label: 'Públicas', icon: PublicIcon, color: '#16a34a' },  // green
+    { code: 'TEAM', label: 'Equipo', icon: PeopleIcon, color: '#2563eb' },  // blue
+    { code: 'PRIVATE', label: 'Privadas', icon: LockIcon, color: '#d97706' },  // amber
 ] as const
 
 // ── Componente ViewGroup ──────────────────────────────────────────────────
@@ -214,26 +215,20 @@ export const LeadSidebar = memo(({
         <Stack sx={{ height: '100%', overflow: 'hidden', bgcolor: 'background.paper' }}>
 
             {/* ── Header ── */}
-            <Stack direction="row"
-                sx={{ justifyContent: 'space-between', alignItems: 'center', px: 2, py: 1.5, borderBottom: `1px solid ${palette.divider}`, flexShrink: 0 }}>
+            <Toolbar sx={{ borderBottom: `1px solid ${palette.divider}` }} >
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                    <FilterAltIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    {cloneElement(ACTION_ICONS.FILTER, { sx: { color: "text.secondary" } })}
+                    <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1 }}>
                         Filtros y Vistas
                     </Typography>
+
                 </Stack>
-                <Tooltip title="Ocultar panel" placement="right">
-                    <IconButton size="small" onClick={onToggle}
-                        sx={{ color: 'text.secondary', '&:hover': { color: 'text.primary' } }}>
-                        <ChevronRightIcon sx={{ fontSize: 18, transform: 'rotate(180deg)' }} />
-                    </IconButton>
-                </Tooltip>
-            </Stack>
+            </Toolbar>
 
             {/* ── Tipo de Vista ── */}
             <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${palette.divider}`, flexShrink: 0 }}>
                 <Typography variant="caption"
-                    sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.7, color: 'text.disabled', display: 'block', mb: 1 }}>
+                    sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.7, color: 'text.secondary', display: 'block', mb: 1 }}>
                     Tipo de Vista
                 </Typography>
                 <ToggleButtonGroup
@@ -266,7 +261,7 @@ export const LeadSidebar = memo(({
                     <Stack ref={saveViewRef} direction="row"
                         sx={{ justifyContent: 'space-between', alignItems: 'center', px: 2, pb: 0.75 }}>
                         <Typography variant="caption"
-                            sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.7, color: 'text.disabled' }}>
+                            sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.7, color: 'text.secondary' }}>
                             Vistas Guardadas
                         </Typography>
                         <Tooltip title="Guardar vista actual">
@@ -347,6 +342,6 @@ export const LeadSidebar = memo(({
                 handleClose={handleCloseForm}
                 handleCreate={handleSaveView}
             />
-        </Stack>
+        </Stack >
     )
 })

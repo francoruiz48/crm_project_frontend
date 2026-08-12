@@ -19,10 +19,10 @@ import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
 interface LeadCampaignSelectorsProps {
-    workspaceId: string | number | null,
-    handleWorkspaceChange: (id: string | number | null) => void,
-    campaignId: string | number | null,
-    handleCampaignChange: (id: string | number | null) => void,
+    workspaceId: string | null,
+    handleWorkspaceChange: (id: string | null) => void,
+    campaignId: string | null,
+    handleCampaignChange: (id: string | null) => void,
 }
 
 export const LeadCampaignSelector = memo(({ workspaceId, handleWorkspaceChange, campaignId, handleCampaignChange }: LeadCampaignSelectorsProps) => {
@@ -143,15 +143,15 @@ export const LeadCampaignSelector = memo(({ workspaceId, handleWorkspaceChange, 
 
 interface LeadListOptionsProps {
     areThereLeads: boolean,
-    campaignId: number | string | null,
+    campaignId: string | null,
     filters: LeadFilter[],
     headers: LeadListParams,
     setFiltersAndHeaders: (filters: LeadFilter[], headers: LeadListParams) => Promise<unknown>,
     campaignSelectorProps: {
-        workspaceId: string | number | null;
-        campaignId: string | number | null;
-        handleWorkspaceChange: (id: string | number | null) => void;
-        handleCampaignChange: (id: string | number | null) => void;
+        workspaceId: string | null;
+        campaignId: string | null;
+        handleWorkspaceChange: (id: string | null) => void;
+        handleCampaignChange: (id: string | null) => void;
     },
     presentationProps: {
         presentationMode: string;

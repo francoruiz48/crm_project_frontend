@@ -13,20 +13,22 @@ interface CommonIconButtonProps extends Omit<IconButtonProps, "color"> {
     tooltipSize?: "small" | "medium" | "large" | "xlarge",
     component?: React.ElementType,
     to?: string,
-    color?: ColorTypes | "action" | "disabled",
+    color?: ColorTypes | string,
     loading?: boolean
     noTooltip?: boolean,
     border?: boolean
 }
 
-export const CommonIconButton = ({ actionType = "NONE", title, color = "action", size = "medium",
+export const CommonIconButton = ({ actionType = "NONE", title, color, size = "medium",
     noTooltip = false, tooltipSize, border = false, loading = false, ...props }: CommonIconButtonProps) => {
 
     const styleIcon = (actionType: ActionType) => {
         if (actionType === "NONE") return ACTION_ICONS.NONE
         if (actionType === "LOADING") return cloneElement(
-            ACTION_ICONS[actionType], { size: (size === "small" ? 18 : 24), color: props.disabled ? "disabled" : color }
+            ACTION_ICONS.LOADING, { size: (size === "small" ? 18 : 24), color: props.disabled ? "disabled" : color }
         )
+        const isValid = Boolean(ACTION_ICONS[actionType])
+        if (!isValid) return ACTION_ICONS.NONE
         return cloneElement(
             ACTION_ICONS[actionType], { fontSize: size, color: props.disabled ? "gray" : color }
         )

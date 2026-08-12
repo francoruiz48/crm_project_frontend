@@ -28,6 +28,9 @@ import TuneIcon from '@mui/icons-material/Tune'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ReplayIcon from '@mui/icons-material/Replay';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import MenuIcon from '@mui/icons-material/Menu';
+import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 
 const ACTION_ICONS = {
     NONE: <></>,
@@ -56,13 +59,16 @@ const ACTION_ICONS = {
     DUPLICATE: <ContentCopyIcon sx={{ display: "block" }} />,
     AUTOMATE: <AutoFixHighIcon sx={{ display: "block" }} />,
     DOWNLOAD: <DownloadIcon sx={{ display: "block" }} />,
+    UPLOAD: <UploadIcon sx={{ display: "block" }} />,
     IMPORT: <UploadIcon sx={{ display: "block" }} />,
     PARAMETERS: <TuneIcon sx={{ display: "block" }} />,
     USER: <PersonIcon sx={{ display: "block" }} />,
     CALENDAR: <CalendarMonthIcon sx={{ display: "block" }} />,
     TIME: <AccessTimeIcon sx={{ display: "block" }} />,
     REPEAT: <ReplayIcon sx={{ display: "block" }} />,
-
+    NAVIGATE: <OpenInNewIcon sx={{ display: "block" }} />,
+    MENU: <MenuIcon sx={{ display: "block" }} />,
+    CLOSE_MENU: <MenuOpenIcon sx={{ display: "block" }} />,
 }
 
 export type ActionType = keyof typeof ACTION_ICONS

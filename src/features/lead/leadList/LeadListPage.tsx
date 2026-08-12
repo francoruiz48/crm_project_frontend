@@ -24,19 +24,16 @@ import { showCommonErrorToast, showToast } from 'src/utils/feedback'
 import { useLeadNavigation } from '../stores/LeadNavigationContext'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-    Box, Button, Collapse, Divider, IconButton, InputAdornment,
+    Box, Collapse, Divider, IconButton, InputAdornment,
     Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme
 } from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
 import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import MenuIcon from '@mui/icons-material/Menu'
-import SearchIcon from '@mui/icons-material/Search'
-import FileUploadIcon from '@mui/icons-material/FileUpload'
-import FileDownloadIcon from '@mui/icons-material/FileDownload'
-import DeleteIcon from '@mui/icons-material/Delete'
-import AddIcon from '@mui/icons-material/Add'
-import ViewListIcon from '@mui/icons-material/ViewList'
 import { Can } from 'src/components/auth/Can'
+import { ListAddButton } from 'src/components/ui/buttons/ExpandingButton'
+import { ChipTooltip } from 'src/components/ui/details/ChipTooltip'
+import { CommonIconButton } from 'src/components/ui/buttons/CommonIconButton'
+import CommonButton from 'src/components/ui/buttons/CommonButton'
 
 const DEFAULT_N_OF_FIELDS = 6
 // MUI AppBar toolbar height (desktop) = 64px; m: -3 cancels parent p: 3 entirely
@@ -97,8 +94,8 @@ export const LeadListPage = () => {
     }, [leads, headerParams, filters, setListContext])
 
     // Campaign / Workspace
-    const [workspaceId, setWorkspaceId] = useState<string | number | null>(params?.get('workspace') ?? null)
-    const [campaignId, setCampaignId] = useState<string | number | null>(params?.get('campaign') ?? null)
+    const [workspaceId, setWorkspaceId] = useState<string | null>(params?.get('workspace') ?? null)
+    const [campaignId, setCampaignId] = useState<string | null>(params?.get('campaign') ?? null)
 
     useEffect(() => {
         setParams(prev => {
@@ -109,8 +106,8 @@ export const LeadListPage = () => {
         }, { replace: true })
     }, [campaignId, workspaceId, setParams])
 
-    const handleWorkspaceChange = useCallback((id: number | string | null) => setWorkspaceId(id), [])
-    const handleCampaignChange = useCallback((id: number | string | null) => setCampaignId(id), [])
+    const handleWorkspaceChange = useCallback((id: string | null) => setWorkspaceId(id), [])
+    const handleCampaignChange = useCallback((id: string | null) => setCampaignId(id), [])
     const campaignSelectorProps = useMemo(() => ({
         workspaceId, campaignId, handleWorkspaceChange, handleCampaignChange
     }), [workspaceId, campaignId, handleWorkspaceChange, handleCampaignChange])
@@ -173,14 +170,14 @@ export const LeadListPage = () => {
             .then(r => setLeadFields([...r.items, ...NATIVE_LEAD_FIELDS]))
     }, [campaignId])
 
-    const [selectedFieldIds, setSelectedFieldIds] = useState<number[]>([])
+    const [selectedFieldIds, setSelectedFieldIds] = useState<string[]>([])
     useEffect(() => {
         if (!leadFields.length || !campaignId) return
         const local = JSON.parse(window.localStorage.getItem('sel_lead_fields') ?? '{}')?.[campaignId]
         setSelectedFieldIds(local ?? leadFields.slice(0, DEFAULT_N_OF_FIELDS).map(f => f.id))
     }, [leadFields, campaignId])
 
-    const handleSelectedFieldIds = useCallback((ids: number[], closeModal = false) => {
+    const handleSelectedFieldIds = useCallback((ids: string[], closeModal = false) => {
         setSelectedFieldIds(ids)
         if (closeModal) modalProps.handleClose()
     }, [modalProps])
@@ -210,6 +207,7 @@ export const LeadListPage = () => {
             // team_id de existingView es el id interno viejo (FK embebida sin migrar), no el
             // uuid que ahora espera LeadViewPost. Se omite del payload para no reenviarlo --
             // el backend lo deja sin cambios si no viene en el body (exclude_unset).
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { team_id: _existingTeamId, ...restExistingView } = existingView
             return updateView({ ...restExistingView, name }, existingView.id)
         }
@@ -334,14 +332,11 @@ export const LeadListPage = () => {
                     flexShrink: 0,
                 }}>
                     {/* Toggle sidebar */}
-                    <Tooltip title={sidebarOpen ? 'Ocultar panel' : 'Mostrar panel'}>
-                        <IconButton size="small" onClick={() => setSidebarOpen(prev => !prev)}
-                            sx={{ color: 'text.secondary', flexShrink: 0 }}>
-                            {sidebarOpen
-                                ? <MenuOpenIcon fontSize="small" />
-                                : <MenuIcon fontSize="small" />}
-                        </IconButton>
-                    </Tooltip>
+                    <ChipTooltip title={sidebarOpen ? 'Ocultar panel' : 'Mostrar panel'} placement="bottom" size="small">
+                        <CommonIconButton size="small" onClick={() => setSidebarOpen(prev => !prev)}
+                            sx={{ color: 'text.secondary', flexShrink: 0 }} noTooltip
+                            actionType={sidebarOpen ? "CLOSE_MENU" : "MENU"} />
+                    </ChipTooltip>
 
                     {/* Breadcrumb: Workspace / Campaña */}
                     <LeadCampaignSelector {...campaignSelectorProps} />
@@ -358,15 +353,14 @@ export const LeadListPage = () => {
                             input: {
                                 startAdornment: (
                                     <InputAdornment position="start">
-                                        <SearchIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+                                        <CommonIconButton size="small" edge="start"
+                                            sx={{ p: 0.25, color: "text.secondary" }} actionType='DETAILS' />
                                     </InputAdornment>
                                 ),
                                 endAdornment: searchText ? (
                                     <InputAdornment position="end">
-                                        <IconButton size="small" onClick={handleSearchClear} edge="end"
-                                            sx={{ p: 0.25 }}>
-                                            <CloseIcon sx={{ fontSize: 14 }} />
-                                        </IconButton>
+                                        <CommonIconButton size="small" onClick={handleSearchClear} edge="end"
+                                            sx={{ p: 0.25 }} actionType='CLOSE' />
                                     </InputAdornment>
                                 ) : null
                             }
@@ -382,52 +376,45 @@ export const LeadListPage = () => {
                                     {selectedCount} seleccionado{selectedCount !== 1 ? 's' : ''}
                                 </Typography>
                                 {areThereLeads && (
-                                    <Button variant="outlined" size="small"
+                                    <CommonButton variant="outlined" size="small"
                                         onClick={exportLoad}
-                                        disabled={exporting}
-                                        startIcon={<FileDownloadIcon sx={{ fontSize: '16px !important' }} />}>
+                                        disabled={exporting} actionType='DOWNLOAD'>
                                         Exportar
-                                    </Button>
+                                    </CommonButton>
                                 )}
-                                <Button variant="outlined" color="error" size="small"
-                                    onClick={() => setBulkDeleteOpen(true)}
-                                    startIcon={<DeleteIcon sx={{ fontSize: '16px !important' }} />}>
+                                <CommonButton variant="outlined" color="error" size="small"
+                                    onClick={() => setBulkDeleteOpen(true)} actionType="DISABLE">
                                     Eliminar
-                                </Button>
+                                </CommonButton>
                             </>
                         ) : (
                             <>
-                                <Tooltip title="Importar Leads">
-                                    <IconButton size="small" onClick={handleImport}
-                                        sx={{ color: 'text.secondary' }}>
-                                        <FileUploadIcon fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
+                                <ChipTooltip title="Importar Leads" size="small" placement='bottom'>
+                                    <CommonIconButton size="small" onClick={handleImport} actionType='UPLOAD'
+                                        sx={{ color: "text.secondary" }}>
+                                    </CommonIconButton>
+                                </ChipTooltip>
                                 {areThereLeads && (
-                                    <Tooltip title="Exportar Leads">
-                                        <IconButton size="small" onClick={exportLoad} disabled={exporting}
-                                            sx={{ color: 'text.secondary' }}>
-                                            <FileDownloadIcon fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
+                                    <ChipTooltip title="Exportar Leads" size="small" placement='bottom'>
+                                        <CommonIconButton size="small" onClick={exportLoad} disabled={exporting}
+                                            actionType='DOWNLOAD' sx={{ color: "text.secondary" }}>
+                                        </CommonIconButton>
+                                    </ChipTooltip>
                                 )}
-                                {areThereLeads && !!campaignId && (
-                                    <Tooltip title="Campos a Mostrar">
-                                        <IconButton size="small"
+                                {areThereLeads && !!campaignId && presentationMode === "TABLE" && (
+                                    <ChipTooltip title="Campos a Mostrar" size="small" placement='bottom'>
+                                        <CommonIconButton size="small" actionType='LIST' noTooltip
                                             onClick={() => modalProps.handleOpen('columns_selector')}
-                                            sx={{ color: 'text.secondary' }}>
-                                            <ViewListIcon fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
+                                            sx={{ color: "text.secondary" }}>
+                                        </CommonIconButton>
+                                    </ChipTooltip>
                                 )}
                                 {areThereLeads && (
                                     <Can permission="lead:create">
-                                        <Button variant="contained" size="small"
-                                            component={RouterLink}
-                                            to={`/leads/new?workspace=${workspaceId}&campaign=${campaignId}`}
-                                            startIcon={<AddIcon sx={{ fontSize: '16px !important' }} />}>
+                                        <ListAddButton variant="contained" size="small" actionType="CREATE" variableWidth
+                                            component={RouterLink} to={`/leads/new?workspace=${workspaceId}&campaign=${campaignId}`}>
                                             Nuevo Lead
-                                        </Button>
+                                        </ListAddButton>
                                     </Can>
                                 )}
                             </>

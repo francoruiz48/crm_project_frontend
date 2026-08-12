@@ -18,6 +18,7 @@ import { OrderSearchMenu } from 'src/components/ui/lists/OrderMenu'
 import { useOrderSeachList } from 'src/hooks/useOrderSearchLists'
 import { NoItemsMessage } from 'src/components/ui/lists/NoItemsMessage'
 import { Can } from 'src/components/auth/Can'
+import { ListAddButton } from 'src/components/ui/buttons/ExpandingButton'
 
 interface TeamMemberListProps {
     team: TeamDetailed
@@ -94,9 +95,7 @@ export const TeamMemberList = ({ team }: TeamMemberListProps) => {
                 <Typography variant="h3">Miembros del Equipo</Typography>
                 <ButtonGroup variant="outlined" sx={{ marginLeft: "auto" }} >
                     <Can permission="team_member:create">
-                        <CommonButton actionType="CREATE" onClick={handleAdd} size="small" onlyTooltip>
-                            Agregar
-                        </CommonButton>
+                        <ListAddButton onClick={handleAdd} size="small" />
                     </Can>
                 </ButtonGroup>
             </Stack>

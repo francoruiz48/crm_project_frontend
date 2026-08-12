@@ -20,6 +20,7 @@ import { useUserContext } from 'src/stores/UserContext'
 import { Can } from 'src/components/auth/Can'
 import { ButtonGroup, Grid, List, ListItemText, Stack, Typography } from '@mui/material'
 import { NoItemsMessage } from 'src/components/ui/lists/NoItemsMessage'
+import { ListAddButton } from 'src/components/ui/buttons/ExpandingButton'
 
 const ORDER_NOM_ITEM_FIELDS = (hasParent: boolean) => [
     { name: "value", label: "Orden Alfabético" },
@@ -33,7 +34,7 @@ const SEARCH_NOM_ITEM_FIELDS = [
 
 export const NomenclatorItemList = ({ nomenclator }: { nomenclator: NomenclatorDetailed }) => {
 
-    const { activeOrg, hasPermission } = useUserContext()
+    const { activeOrg, hasPermission, user } = useUserContext()
 
     const [nomenclatorItems, setNomenclatorItems] = useState<Paginable<NomenclatorItemDetailed> | null>(null)
     const [parentNomenclatorItems, setParentNomenclatorItems] = useState<{ label: string, value: string }[]>([])
@@ -44,7 +45,7 @@ export const NomenclatorItemList = ({ nomenclator }: { nomenclator: NomenclatorD
 
     const { fetchParams, changeHandlers } = useOrderSeachList()
 
-    const fetchNomItems = useCallback((fetchPage: number, pageSize: number, nomId: number) => {
+    const fetchNomItems = useCallback((fetchPage: number, pageSize: number, nomId: string) => {
         return getNomenclatorItems({ detailed: true, page: fetchPage, page_size: pageSize, nomenclator_id: nomId, ...fetchParams })
             .then(res => setNomenclatorItems(res))
             .catch(e => showCommonErrorToast(e, "Ha ocurrido un error al traer los ítems del nomenclador"))
@@ -134,7 +135,7 @@ export const NomenclatorItemList = ({ nomenclator }: { nomenclator: NomenclatorD
         setDeletingItem(deletingItem)
     }
 
-    const isBlocked = !nomenclator.organization_id && activeOrg?.id !== 0
+    const isBlocked = nomenclator.organization_id === 1 && !user?.is_superuser
 
     const hasParent = nomenclator.parent_nomenclators.length > 0
 
@@ -155,9 +156,7 @@ export const NomenclatorItemList = ({ nomenclator }: { nomenclator: NomenclatorD
                     <ButtonGroup variant="outlined" sx={{ marginLeft: "auto" }} >
                         {nomenclatorItems && nomenclatorItems.items?.length > 0 && !isBlocked &&
                             <Can permission="nomenclator_item:create">
-                                <CommonButton actionType="CREATE" onClick={() => handleSidebar("CREATE_NOM")} size="small" onlyTooltip>
-                                    Agregar
-                                </CommonButton>
+                                <ListAddButton onClick={() => handleSidebar("CREATE_NOM")} size="small" />
                             </Can>
                         }
                     </ButtonGroup>

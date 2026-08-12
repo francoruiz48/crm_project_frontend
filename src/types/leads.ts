@@ -30,7 +30,7 @@ export interface LeadUser {
   email: string;
 }
 
-export interface Lead {
+export interface Lead extends Metadata {
   id: string;
   // Referencia legible por el usuario, ej. "L-0001". Puede venir null en leads insertados directo. 
   // En la práctica todo lead real de la app siempre lo tiene.
@@ -134,7 +134,7 @@ export interface LeadViewPost {
     [item: string]: unknown
   },
   ui_config?: {
-    selected_ids?: number[],
+    selected_ids?: string[],
     fetch_params?: ListParams,
     [item: string]: unknown
   },
@@ -152,7 +152,7 @@ export interface LeadViewParams {
     [item: string]: unknown
   },
   ui_config?: {
-    selected_ids?: number[],
+    selected_ids?: string[],
     fetch_params?: ListParams,
     [item: string]: unknown
   },
@@ -171,7 +171,7 @@ export interface LeadView extends Omit<LeadViewPost, "team_id" | "campaign_id"> 
   // Antes (Fase 3) esto estaba tipado string asumiendo que el Response ya daba el uuid real,
   // pero era un bug: el schema no convertía el int interno, tiraba 500 en cualquier request
   // (arreglado en Fase 4 agregando los objetos anidados de abajo).
-  campaign_id: number,
+  campaign_id: string,
   campaign?: Campaign | null,
   team?: Team | null,
 }

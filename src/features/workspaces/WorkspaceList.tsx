@@ -23,6 +23,7 @@ import { useUserContext } from 'src/stores/UserContext';
 import { Can } from 'src/components/auth/Can';
 import { useSearchParams } from 'react-router-dom';
 import { List, ListItemText, Stack, Typography } from '@mui/material'
+import { ListAddButton } from 'src/components/ui/buttons/ExpandingButton';
 
 const ORDER_WSP_FIELDS = [
     { name: "name", label: "Orden Alfabético" },
@@ -139,11 +140,10 @@ export const WorkspaceList = () => {
             <Stack spacing={2}>
                 <Stack spacing={2} direction="row" useFlexGap sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
                     <Typography variant="h1">Espacios de Trabajo</Typography>
+
                     {workspaces && workspaces?.items.length > 0 &&
                         <Can permission="workspace:create">
-                            <CommonButton actionType="CREATE" onClick={() => handleSidebar("CREATE_WSP", null)} sx={{ marginLeft: "auto" }} onlyTooltip>
-                                Agregar
-                            </CommonButton>
+                            <ListAddButton onClick={() => handleSidebar("CREATE_WSP", null)} sx={{ marginLeft: "auto" }} />
                         </Can>
                     }
                 </Stack>

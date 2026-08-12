@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react"
 
-export const useSelectCheckbox = <T extends { id: number, active?: boolean }>() => {
-    const [checkedItems, setCheckedItems] = useState<Map<number, T>>(new Map())
+export const useSelectCheckbox = <T extends { id: string, active?: boolean }>() => {
+    const [checkedItems, setCheckedItems] = useState<Map<string, T>>(new Map())
 
     const checkedItemsArray = useMemo(() => Array.from(checkedItems.values()), [checkedItems])
 

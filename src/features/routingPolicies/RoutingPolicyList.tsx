@@ -31,6 +31,7 @@ import { useOrderSeachList } from 'src/hooks/useOrderSearchLists'
 import { OrderSearchMenu } from 'src/components/ui/lists/OrderMenu'
 import CustomChip from 'src/components/ui/details/CustomChip'
 import { Can } from 'src/components/auth/Can'
+import { ListAddButton } from 'src/components/ui/buttons/ExpandingButton'
 
 const PAGE_SIZE = 12
 
@@ -179,10 +180,8 @@ export const RoutingPolicyList = () => {
                 <Stack direction="row" useFlexGap spacing={2} sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
                     <Typography variant="h1">Políticas de Enrutamiento</Typography>
                     <Can permission="lead_routing_policy:create">
-                        <CommonButton actionType="CREATE" onClick={() => { handleSidebar("CREATE_POLICY", null) }}
-                            sx={{ marginLeft: "auto" }} onlyTooltip>
-                            Agregar
-                        </CommonButton>
+                        <ListAddButton onClick={() => { handleSidebar("CREATE_POLICY", null) }}
+                            sx={{ marginLeft: "auto" }} />
                     </Can>
                 </Stack>
 

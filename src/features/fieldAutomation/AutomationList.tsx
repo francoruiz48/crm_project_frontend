@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { GenericContainer } from 'shared/layout/container/GenericContainer';
 import PaginationComponent from 'shared/ui/lists/PaginationComponent';
 import { ResponsiveListItem } from 'shared/ui/lists/CustomListItem';
-import CommonButton from 'shared/ui/buttons/CommonButton';
 import { EnabledIcon } from 'shared/ui/lists/Icons';
 import { useListPagination } from 'src/hooks/useListPagination';
 import type { FieldAutomationDetailed } from 'src/types/automation';
@@ -21,6 +20,7 @@ import { DisableConfirmDialog } from 'src/components/ui/feedback/ConfirmationDia
 import { useOrderSeachList } from 'src/hooks/useOrderSearchLists';
 import { OrderSearchMenu } from 'src/components/ui/lists/OrderMenu';
 import { Can } from 'src/components/auth/Can';
+import { ListAddButton } from 'src/components/ui/buttons/ExpandingButton';
 
 const ORDER_AUTO_FIELDS = [
   { name: "name", label: "Orden Alfabético" },
@@ -133,16 +133,11 @@ export const AutomationList = () => {
               } />
           </Stack>
           <Can permission="field_automation:create">
-            <CommonButton
-              actionType='CREATE'
-              onlyTooltip
+            <ListAddButton
               disabled={!isCampaignSelected}
               component={Link}
               to={`/automations/create?campaign=${selectedCampaignId}`}
-              sx={{ ml: "auto" }}
-            >
-              Nueva Automatización
-            </CommonButton>
+              sx={{ ml: "auto" }} />
           </Can>
         </Stack>
 
