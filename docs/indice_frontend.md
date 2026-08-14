@@ -14,7 +14,7 @@
 ## Hooks y utilidades
 | Doc | Descripción |
 |---|---|
-| [`hooks_y_utilidades/hooks.md`](hooks_y_utilidades/hooks.md) | Los 9 hooks personalizados: useModal, useListPagination, useLoading, useDebounce, useDragAndDrop, useSidebar, useSelectCheckbox, useOrderList, useOrderSearchList |
+| [`hooks_y_utilidades/hooks.md`](hooks_y_utilidades/hooks.md) | Los 9 hooks personalizados: useModal, useListPagination, useLoading, useDebounce, useDragAndDrop, useSidebar, useSelectCheckbox, useOrderList, useOrderSeachList (sic, typo histórico) |
 | [`hooks_y_utilidades/utilidades.md`](hooks_y_utilidades/utilidades.md) | Utils (feedback, formatters, forms, lists, constants), lib (axios, tokenStore), stores (UserContext), types, theme |
 
 ## Features (`src/features/`)

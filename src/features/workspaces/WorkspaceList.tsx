@@ -44,7 +44,7 @@ export const WorkspaceList = () => {
 
     const { fetchPage, pageSize, pageComponentProps } = useListPagination(workspaces)
 
-    const { fetchParams, changeHandlers } = useOrderSeachList()
+    const { fetchParams, changeHandlers } = useOrderSeachList("workspaces")
 
     const { activeOrg } = useUserContext()
 

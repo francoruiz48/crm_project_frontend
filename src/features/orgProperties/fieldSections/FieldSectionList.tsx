@@ -34,7 +34,7 @@ export const FieldSectionList = () => {
 
     const { fetchPage, pageSize, pageComponentProps } = useListPagination(sections)
 
-    const { fetchParams, changeHandlers } = useOrderSeachList()
+    const { fetchParams, changeHandlers } = useOrderSeachList("sections")
 
     const fetchSections = useCallback((fetchPage: number, pageSize: number) => {
         return getFieldSections({

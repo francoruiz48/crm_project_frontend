@@ -34,7 +34,7 @@ export const LeadTagsList = () => {
 
     const { fetchPage, pageSize, pageComponentProps } = useListPagination(tags)
 
-    const { fetchParams, changeHandlers } = useOrderSeachList()
+    const { fetchParams, changeHandlers } = useOrderSeachList("tags")
 
     const fetchTags = useCallback((fetchPage: number, pageSize: number) => {
         return getTags({

@@ -146,15 +146,16 @@ showCommonErrorToast(error, "Error al guardar")
 ```
 
 ### Paginación + búsqueda + orden
-Usar `useListPagination`, `useOrderSearchList`, y los componentes `PaginationComponent`, `SearchInput`, `OrderMenu`, `OrderSearchMenu`:
+Usar `useListPagination`, `useOrderSeachList`, y los componentes `PaginationComponent`, `SearchInput`, `OrderMenu`, `OrderSearchMenu`:
 ```tsx
 const { fetchPage, pageSize, goToPageOne, pageComponentProps } = useListPagination(list)
-const { fetchParams, changeHandlers } = useOrderSearchList()
+const { fetchParams, changeHandlers } = useOrderSeachList("leads")
 // fetch({ page: fetchPage, page_size: pageSize, ...fetchParams })
 // ...
 <OrderSearchMenu {...changeHandlers} />
 <PaginationComponent {...pageComponentProps} />
 ```
+> `useOrderSeachList(entityName, id?, defaultValues?)` persiste los filtros avanzados en `sessionStorage` por entidad y organización activa (ver `docs/hooks_y_utilidades/hooks.md`).
 
 ### Listas responsivas con acciones
 Usar `ResponsiveListItem` para listas con hover actions (escritorio) que se convierten en menú contextual (táctil):

@@ -43,7 +43,7 @@ export const NomenclatorItemList = ({ nomenclator }: { nomenclator: NomenclatorD
 
     const { fetchPage, pageSize, pageComponentProps } = useListPagination(nomenclatorItems, 12)
 
-    const { fetchParams, changeHandlers } = useOrderSeachList()
+    const { fetchParams, changeHandlers } = useOrderSeachList("nomenclator_items", nomenclator.id)
 
     const fetchNomItems = useCallback((fetchPage: number, pageSize: number, nomId: string) => {
         return getNomenclatorItems({ detailed: true, page: fetchPage, page_size: pageSize, nomenclator_id: nomId, ...fetchParams })

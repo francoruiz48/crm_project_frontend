@@ -48,7 +48,7 @@ export const LeadAuditList = ({ lead, reloadAudit }: { lead: LeadDetailed, reloa
   const [audit, setAudit] = useState<Paginable<LeadAudit> | null>(null)
 
   const { fetchPage, pageSize, pageComponentProps, goToPageOne } = useListPagination(audit, 8)
-  const { fetchParams, changeHandlers } = useOrderSeachList()
+  const { fetchParams, changeHandlers } = useOrderSeachList("lead_audit", lead.id)
 
   const onOrderChange = useCallback((orderBy?: string, asc?: boolean) => {
     changeHandlers.handleOrderChange(orderBy, asc)

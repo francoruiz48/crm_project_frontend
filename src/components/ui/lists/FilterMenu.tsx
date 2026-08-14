@@ -4,7 +4,7 @@ import { CustomAvatar } from '../details/CustomAvatar'
 import ACTION_ICONS from '../icons/ActionIcons'
 import { Badge, Grid, Stack, ButtonGroup, Box, Divider } from '@mui/material'
 import CommonButton from '../buttons/CommonButton'
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { ControlledSwitch, RegisteredDateInput, RegisteredTextInput } from '../forms/CustomInputs'
 import { ControlledAutocomplete } from '../forms/CustomMultipleInputs'
@@ -50,8 +50,15 @@ export const FilterMenu = ({ existingFilters, filterOptions, onSubmit, onClose, 
 
     useEffect(() => { fetchUsersLoad() }, [fetchUsersLoad])
 
+    const defaultValues = useMemo(() => ({
+        ...existingFilters,
+        user_type:
+            existingFilters.creator_email ? "creator" :
+                existingFilters.updater_email ? "updater" : undefined,
+    }), [existingFilters])
+
     const { register, control, reset, handleSubmit } = useForm<Record<string, string>>({
-        defaultValues: existingFilters
+        defaultValues
     })
 
     const submit = (data: Record<string, string>) => {

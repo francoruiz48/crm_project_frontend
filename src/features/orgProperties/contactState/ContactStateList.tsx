@@ -36,7 +36,7 @@ export const ContactStateList = () => {
 
     const { fetchPage, pageSize, pageComponentProps } = useListPagination(states)
 
-    const { fetchParams, changeHandlers } = useOrderSeachList()
+    const { fetchParams, changeHandlers } = useOrderSeachList("states")
 
     const fetchStates = useCallback((fetchPage: number, pageSize: number) => {
         return getLeadContactStates({

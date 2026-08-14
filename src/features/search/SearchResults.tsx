@@ -96,10 +96,10 @@ export const SearchResultsList = () => {
                         <Box sx={{ width: '100%' }}>
                             {searchCategories.length > 1 &&
                                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                                    <Tabs value={openTab} onChange={handleChange} aria-label="basic tabs example"
+                                    <Tabs value={openTab} onChange={handleChange} aria-label="Resultados por categoría"
                                         variant="scrollable" scrollButtons="auto">
-                                        {searchCategories.map(tab => {
-                                            return (<Tab id={tab.id} aria-controls={tab["aria-controls"]} key={`tab-${tab.id}`}
+                                        {searchCategories.map((tab, idx) => {
+                                            return (<Tab id={`simple-tab-${idx}`} aria-controls={`simple-tabpanel-${idx}`} key={`tab-${tab.id}`}
                                                 disabled={tab.items.length === 0}
                                                 label={
                                                     <>
@@ -130,26 +130,29 @@ export const SearchResultsList = () => {
     )
 }
 
-const RESULT_ACTIONS = (lead: Lead): ListItemAction[] => [
-    {
-        actionType: "LIST", component: Link, to: `/campaigns/${lead.campaign?.id}`,
+const RESULT_ACTIONS = (lead: Lead): ListItemAction[] => {
+    const actions: ListItemAction[] = []
+    // Solo se muestra la acción de campaña si el lead tiene una asignada (evita /campaigns/undefined)
+    if (lead.campaign?.id) actions.push({
+        actionType: "LIST", component: Link, to: `/campaigns/${lead.campaign.id}`,
         label: "Ver Campaña", permission: "campaign:view"
-    },
-    {
+    })
+    actions.push({
         actionType: "DETAILS", component: Link, to: `/leads/${lead.id}`,
         label: "Ver Detalle", permission: "lead:view"
-    },
-]
+    })
+    return actions
+}
 
-interface SearchListProps<Item extends { id: string }> {
-    list: Item[],
+interface SearchListProps {
+    list: Lead[],
     listId: string,
-    getPrimaryText: (item: Item) => string,
-    getSecondaryText?: (item: Item) => string | undefined,
+    getPrimaryText: (item: Lead) => string,
+    getSecondaryText?: (item: Lead) => string | undefined,
     getDetailsLink: (id: string) => string,
 }
 
-const SearchList = <Item extends { id: string }>({ list, listId, getPrimaryText, getSecondaryText, getDetailsLink }: SearchListProps<Item>) => {
+const SearchList = ({ list, listId, getPrimaryText, getSecondaryText, getDetailsLink }: SearchListProps) => {
 
     if (list.length === 0) return (
         <Typography variant="h3" sx={{ textAlign: "center" }}>No se han encontrado resultados para la búsqueda.</Typography>
@@ -158,10 +161,10 @@ const SearchList = <Item extends { id: string }>({ list, listId, getPrimaryText,
     return (
         <List>
             <Grid container sx={{ alignItems: "stretch" }}>
-                {list.map((item, idx) =>
+                {list.map(item =>
                     <Grid size={{ xs: 12, sm: 12, md: 6, lg: 4 }}
-                        key={`${listId}-${idx}`} sx={{ minWidth: "20rem" }}>
-                        <ResponsiveListItem disablePadding actions={RESULT_ACTIONS(item as unknown as Lead)}
+                        key={`${listId}-${item.id}`} sx={{ minWidth: "20rem" }}>
+                        <ResponsiveListItem disablePadding actions={RESULT_ACTIONS(item)}
                             component={Link} to={getDetailsLink(item.id)}          >
                             <ListItemAvatar>
                                 <UserAvatar name={getPrimaryText(item)} />

@@ -112,14 +112,22 @@ const { orderBy, ascending, handleOrderList, orderProps } = useOrderList(fetchDa
 - Ciclo: ascendente → descendente → sin orden
 - `orderProps`: `{ orderBy, ascending, handleOrderList }` listo para spread
 
-## `useOrderSearchList`
-Combina estado de búsqueda + ordenamiento + filtro de activos:
+## `useOrderSeachList`
+Combina estado de búsqueda + ordenamiento + filtro de activos, con persistencia de los **filtros avanzados** en `sessionStorage` (solo filtros, no orden ni búsqueda por texto).
+> Nota: el export conserva el typo histórico `useOrderSeachList` (falta la "r"). El archivo es `src/hooks/useOrderSearchLists.ts`.
 ```tsx
-const { fetchParams, changeHandlers } = useOrderSearchList(defaultValues)
+const { fetchParams, changeHandlers } = useOrderSeachList(entityName, id?, defaultValues?)
 
-// fetchParams = { order_by, ascending, search, search_fields, only_active }
+// entityName: string, clave de la entidad (ej. "leads", "campaigns", "nomenclators")
+// id?: string, para instancias de listas dentro de otras listas con filtros propios
+//   (ej. los ítems de un nomenclador: useOrderSeachList("nomenclator_items", nomenclator.id))
+// defaultValues?: { order_by, ascending, search, search_fields }
+
+// fetchParams = { order_by, ascending, search, search_fields, ...filterParams }
 // changeHandlers = { handleOrderChange, handleSearchChange, handleFilterChange, filterParams }
 // Pasar a OrderSearchMenu:
 <OrderSearchMenu {...changeHandlers} />
 ```
-- `defaultValues` opcional: `{ order_by, ascending, search, search_fields, only_active }`
+- La clave de persistencia incluye la **organización activa** (`${entityName}${id ? "_" + id : ""}_${activeOrg?.id}_filters`), así los filtros de una org no se arrastran a otra.
+- `defaultValues` opcional define el orden/búsqueda por defecto (ej. `useOrderSeachList("automations", undefined, DEFAULT_FIELDS)` para las automatizaciones).
+- Tolerante a `sessionStorage` no disponible (modo privado) y a claves corruptas: en ambos casos se trabaja solo con estado en memoria.

@@ -55,7 +55,7 @@ export const AutomationList = () => {
 
   const isCampaignSelected = selectedCampaignId !== ""
 
-  const { fetchParams, changeHandlers } = useOrderSeachList(DEFAULT_FIELDS)
+  const { fetchParams, changeHandlers } = useOrderSeachList("automations", undefined, DEFAULT_FIELDS)
 
   const { fetchPage, pageSize, refresh, pageComponentProps } = useListPagination(automations);
 

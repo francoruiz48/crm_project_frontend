@@ -1,8 +1,13 @@
 import { useCallback, useMemo, useState } from "react"
 import type { OrderParams, OrderSearchParams, SearchParams } from "src/types/shared"
+import { useUserContext } from "src/stores/UserContext"
 
 export const useOrderSeachList = (
-    defaultValues?: OrderSearchParams
+    entityName: string,
+    // id Solo para instancias de listas dentro de otras listas, 
+    //donde se puede abrir múltiples listas con diferentes filtros (Nomenclator_Items)
+    id?: string,
+    defaultValues?: OrderSearchParams,
 ) => {
 
     const {
@@ -12,9 +17,24 @@ export const useOrderSeachList = (
         search_fields: defFields,
     } = defaultValues ?? {}
 
+    // Los filtros se persisten por organización activa, entidad e instancia, para que
+    // los filtros aplicados en una org no se arrastren a otra al cambiar de organización.
+    const { activeOrg } = useUserContext()
+
+    const entityFilterName = useMemo(() =>
+        `${entityName}${id ? "_" + id : ""}_${activeOrg?.id ?? "no-org"}_filters`,
+        [entityName, id, activeOrg?.id])
+
     const [orderParams, setOrderParams] = useState<OrderParams>({ order_by: defOrderBy, ascending: defAsc })
     const [searchParams, setSearchParams] = useState<SearchParams>({ search: defSearch, search_fields: defFields })
-    const [filterParams, setFilterParams] = useState<Record<string, string>>({})
+    const [filterParams, setFilterParams] = useState<Record<string, string>>(() => {
+        try {
+            return JSON.parse(sessionStorage.getItem(entityFilterName) ?? "{}")
+        } catch {
+            // Clave corrupta o sessionStorage no disponible: se arranca sin filtros persistidos
+            return {}
+        }
+    })
 
     const handleOrderChange = useCallback((orderBy?: string, asc: boolean = false) => {
         if (!orderBy) setOrderParams({})
@@ -28,7 +48,14 @@ export const useOrderSeachList = (
 
     const handleFilterChange = useCallback((newFilters: Record<string, string>) => {
         setFilterParams(newFilters)
-    }, [])
+        // Guard contra sessionStorage no disponible (modo privado, cuota llena): los filtros
+        // se mantienen igual en memoria, solo no quedan persistidos entre recargas.
+        try {
+            sessionStorage.setItem(entityFilterName, JSON.stringify(newFilters))
+        } catch {
+            // sin persistencia
+        }
+    }, [entityFilterName])
 
     const fetchParams = useMemo(() => (
         {

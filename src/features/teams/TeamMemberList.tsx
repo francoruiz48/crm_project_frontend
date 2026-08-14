@@ -44,7 +44,7 @@ export const TeamMemberList = ({ team }: TeamMemberListProps) => {
     const [editingMember, setEditingMember] = useState<TeamMemberDetailed | undefined>(undefined)
     const [removingMember, setRemovingMember] = useState<TeamMemberDetailed | null>(null)
 
-    const { fetchParams, changeHandlers } = useOrderSeachList()
+    const { fetchParams, changeHandlers } = useOrderSeachList("team_members", team.id)
 
     const { fetchPage, pageSize, pageComponentProps } = useListPagination(members, 10)
 

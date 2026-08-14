@@ -43,7 +43,7 @@ export const TeamList = () => {
 
     const { fetchPage, pageSize, pageComponentProps } = useListPagination(teams)
 
-    const { fetchParams, changeHandlers } = useOrderSeachList()
+    const { fetchParams, changeHandlers } = useOrderSeachList("teams")
 
     const fetchTeams = useCallback((fetchPage: number, pageSize: number) => {
         return getTeams({ detailed: true, page: fetchPage, page_size: pageSize, ...fetchParams })

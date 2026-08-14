@@ -62,7 +62,7 @@ export const RoutingPolicyList = () => {
 
     const { sidebarMode, selectedEntity, handleSidebar, closeSidebar } = useSidebar<LeadRoutingPolicyDetailed>("id", params, setParams, getRoutingPolicy, "DETAILS_POLICY")
 
-    const { fetchParams, changeHandlers } = useOrderSeachList()
+    const { fetchParams, changeHandlers } = useOrderSeachList("policies")
 
     const { fetchPage, pageSize, pageComponentProps } = useListPagination(policies, PAGE_SIZE)
 

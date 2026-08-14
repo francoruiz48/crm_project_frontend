@@ -31,7 +31,7 @@ export const LeadComments = ({ leadId }: { leadId: string }) => {
     const [comments, setComments] = useState<Paginable<LeadComment> | null>(null)
     const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null)
     const { fetchPage, pageSize, pageComponentProps, goToPageOne } = useListPagination(comments, 12)
-    const { fetchParams, changeHandlers } = useOrderSeachList()
+    const { fetchParams, changeHandlers } = useOrderSeachList("lead_comments", leadId)
 
     const onOrderChange = useCallback((orderBy?: string, asc?: boolean) => {
         changeHandlers.handleOrderChange(orderBy, asc)

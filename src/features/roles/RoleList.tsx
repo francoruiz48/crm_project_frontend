@@ -46,7 +46,7 @@ export const RoleList = () => {
 
     const { fetchPage, pageSize, pageComponentProps } = useListPagination(roles)
 
-    const { fetchParams, changeHandlers } = useOrderSeachList()
+    const { fetchParams, changeHandlers } = useOrderSeachList("roles")
 
     const fetchRoles = useCallback((fetchPage: number, pageSize: number) => {
         return getRoles({ detailed: true, page: fetchPage, page_size: pageSize, ...fetchParams })

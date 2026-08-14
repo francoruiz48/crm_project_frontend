@@ -40,7 +40,7 @@ export const OrganizationList = () => {
 
     const [organizations, setOrganizations] = useState<OrganizationDetailed[]>([])
 
-    const { fetchParams, changeHandlers } = useOrderSeachList()
+    const { fetchParams, changeHandlers } = useOrderSeachList("organizations")
 
     const fetchOrganizations = useCallback(async () => {
         return getOrganizations({ detailed: true, page_size: 0, ...fetchParams })
