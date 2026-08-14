@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Box, Button, List, ListItem, ListItemButton, ListItemText, Stack, Tab, Tabs, Typography } from '@mui/material'
-import type { Lead } from 'src/types/leads';
-import type { Campaign, Workspace } from 'src/types/campaigns';
-import type { Nomenclator, NomenclatorItem } from 'src/types/nomenclators';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { Box, Grid, List, ListItemAvatar, ListItemText, Stack, Tab, Tabs, Typography } from '@mui/material'
 import type { SearchResults } from 'src/types/shared';
-import { generalSearch } from './searchServices';
 import { GenericContainer } from 'shared/layout/container/GenericContainer';
 import { useLoading } from 'src/hooks/useLoading';
 import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen';
+import { generalSearch } from 'src/services/generalService';
+import { getSearchCategories } from './GeneralSearchBar';
+import { ResponsiveListItem, type ListItemAction } from 'src/components/ui/lists/CustomListItem';
+import type { Lead } from 'src/types/leads';
+import { UserAvatar } from 'src/components/ui/details/UserAvatar';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -33,17 +33,6 @@ function CustomTabPanel(props: TabPanelProps) {
     );
 }
 
-interface SearchResultsTabs<Item> {
-    label: string,
-    id: string,
-    "aria-controls": string,
-    length: number,
-    list: Item[],
-    getPrimaryText: (item: Item) => string,
-    getSecondaryText?: (item: Item) => string,
-    getDetailsLink: (item: Item) => string,
-
-}
 export const SearchResultsList = () => {
 
     const [results, setResults] = useState<SearchResults | null>(null)
@@ -65,6 +54,8 @@ export const SearchResultsList = () => {
     useEffect(() => {
         searchLoad(query)
     }, [searchLoad, query])
+
+    const searchCategories = useMemo(() => getSearchCategories(results), [results])
 
     const totalResults = useMemo(() => {
         if (!results) return 0
@@ -90,30 +81,6 @@ export const SearchResultsList = () => {
         }, { replace: true })
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tabs: SearchResultsTabs<any>[] = useMemo(() => [
-        {
-            label: "Leads", id: "search-leads", "aria-controls": "search-tab-leads", length: results?.leads?.length ?? 0, list: results?.leads ?? [],
-            getPrimaryText: (item: Lead) => `${item.field_values[0].value} ${item.field_values[1].value}`, getDetailsLink: (item: Lead) => `/leads/${item.id}`
-        },
-        {
-            label: "Campañas", id: "search-campaigns", "aria-controls": "search-tab-campaigns", length: results?.campaigns?.length ?? 0, list: results?.campaigns ?? [],
-            getPrimaryText: (item: Campaign) => item.name!, getSecondaryText: (item: Campaign) => item.description ?? "", getDetailsLink: (item: Campaign) => `/campaigns/${item.id}`
-        },
-        {
-            label: "Espacios de Trabajo", id: "search-workspaces", "aria-controls": "search-tab-workspaces", length: results?.workspaces?.length ?? 0, list: results?.workspaces ?? [],
-            getPrimaryText: (item: Workspace) => item.name!, getSecondaryText: (item: Workspace) => item.description ?? "", getDetailsLink: (item: Workspace) => `/campaigns?selected=${item.id}`
-        },
-        {
-            label: "Nomencladores", id: "search-nomenclators", "aria-controls": "search-tab-nomenclators", length: results?.nomenclators?.length ?? 0, list: results?.nomenclators ?? [],
-            getPrimaryText: (item: Nomenclator) => item.name!, getDetailsLink: (item: Nomenclator) => `/nomenclators?selected=${item.id}`
-        },
-        {
-            label: "Ítems de Nomenclador", id: "search-nomenclator_items", "aria-controls": "search-tab-nomenclator_items", length: results?.nomenclator_items?.length ?? 0,
-            list: results?.nomenclator_items ?? [], getPrimaryText: (item: NomenclatorItem) => `${item.value}`, getDetailsLink: (item: NomenclatorItem) => `/nomenclators/${item.nomenclator_id}?selected=${item.id}`
-        },
-    ], [results])
-
     const getLengthText = (length: number) => {
         if (length === 0) return "Sin resultados"
         if (length === 1) return "1 resultado"
@@ -121,33 +88,34 @@ export const SearchResultsList = () => {
     }
 
     return (
-        <GenericContainer maxWidth="xl">
-            <Stack spacing={3}>
-                <Typography variant="h1">Resultado de la Búsqueda: "{query}"</Typography>
+        <GenericContainer maxWidth="lg">
+            <Stack spacing={2}>
+                <Typography variant="h1">Resultados de la búsqueda: "{query}"</Typography>
                 <LoadingScreenWrapper loading={loading}>
                     {totalResults > 0 ?
                         <Box sx={{ width: '100%' }}>
-                            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                                <Tabs value={openTab} onChange={handleChange} aria-label="basic tabs example"
-                                    variant="scrollable" scrollButtons="auto">
-                                    {tabs.map(tab => {
-                                        return (<Tab id={tab.id} aria-controls={tab["aria-controls"]} key={`tab-${tab.id}`}
-                                            disabled={tab.length === 0}
-                                            label={
-                                                <>
-                                                    <Typography variant="body1" sx={{ fontWeight: 600 }}>{tab.label}</Typography>
-                                                    <Typography variant="body2" sx={{ fontStyle: "italic" }}>{getLengthText(tab.length)}</Typography>
-                                                </>
-                                            }
-                                        />)
-                                    })}
-                                </Tabs>
-                            </Box>
-                            {tabs.map((tab, idx) => {
+                            {searchCategories.length > 1 &&
+                                <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                                    <Tabs value={openTab} onChange={handleChange} aria-label="basic tabs example"
+                                        variant="scrollable" scrollButtons="auto">
+                                        {searchCategories.map(tab => {
+                                            return (<Tab id={tab.id} aria-controls={tab["aria-controls"]} key={`tab-${tab.id}`}
+                                                disabled={tab.items.length === 0}
+                                                label={
+                                                    <>
+                                                        <Typography variant="body1" sx={{ fontWeight: 600 }}>{tab.label}</Typography>
+                                                        <Typography variant="body2" sx={{ fontStyle: "italic" }}>{getLengthText(tab.items.length)}</Typography>
+                                                    </>
+                                                }
+                                            />)
+                                        })}
+                                    </Tabs>
+                                </Box>}
+                            {searchCategories.map((tab, idx) => {
                                 return (
                                     <CustomTabPanel value={openTab} index={idx} key={`content-${tab.id}`}>
-                                        <SearchList list={tab.list} listId={tab.id}
-                                            getPrimaryText={tab.getPrimaryText} getSecondaryText={tab.getSecondaryText} getDetailsLink={tab.getDetailsLink} />
+                                        <SearchList list={tab.items} listId={tab.id}
+                                            getPrimaryText={tab.getPrimaryItemText} getSecondaryText={tab.getSecondaryItemText} getDetailsLink={tab.getRoute} />
                                     </CustomTabPanel>
                                 )
                             })
@@ -162,15 +130,26 @@ export const SearchResultsList = () => {
     )
 }
 
-interface SearchListProps<Item> {
+const RESULT_ACTIONS = (lead: Lead): ListItemAction[] => [
+    {
+        actionType: "LIST", component: Link, to: `/campaigns/${lead.campaign?.id}`,
+        label: "Ver Campaña", permission: "campaign:view"
+    },
+    {
+        actionType: "DETAILS", component: Link, to: `/leads/${lead.id}`,
+        label: "Ver Detalle", permission: "lead:view"
+    },
+]
+
+interface SearchListProps<Item extends { id: string }> {
     list: Item[],
     listId: string,
     getPrimaryText: (item: Item) => string,
-    getSecondaryText?: (item: Item) => string,
-    getDetailsLink: (item: Item) => string,
+    getSecondaryText?: (item: Item) => string | undefined,
+    getDetailsLink: (id: string) => string,
 }
 
-const SearchList = <Item,>({ list, listId, getPrimaryText, getSecondaryText, getDetailsLink }: SearchListProps<Item>) => {
+const SearchList = <Item extends { id: string }>({ list, listId, getPrimaryText, getSecondaryText, getDetailsLink }: SearchListProps<Item>) => {
 
     if (list.length === 0) return (
         <Typography variant="h3" sx={{ textAlign: "center" }}>No se han encontrado resultados para la búsqueda.</Typography>
@@ -178,35 +157,28 @@ const SearchList = <Item,>({ list, listId, getPrimaryText, getSecondaryText, get
 
     return (
         <List>
-            {list.map((item, idx) =>
-                <ListItem key={`${listId}-${idx}`} disablePadding secondaryAction={
-                    <Button aria-label="goto" variant='outlined' size='small' fullWidth endIcon={<OpenInNewIcon />}
-                        component={Link} to={getDetailsLink(item)}>
-                        <Typography noWrap variant="body2" sx={{ fontWeight: 600 }}>Ir al Detalle</Typography>
-                    </Button>
+            <Grid container sx={{ alignItems: "stretch" }}>
+                {list.map((item, idx) =>
+                    <Grid size={{ xs: 12, sm: 12, md: 6, lg: 4 }}
+                        key={`${listId}-${idx}`} sx={{ minWidth: "20rem" }}>
+                        <ResponsiveListItem disablePadding actions={RESULT_ACTIONS(item as unknown as Lead)}
+                            component={Link} to={getDetailsLink(item.id)}          >
+                            <ListItemAvatar>
+                                <UserAvatar name={getPrimaryText(item)} />
+                            </ListItemAvatar>
+                            <ListItemText
+                                primary={
+                                    <Typography variant="body1" sx={{ fontWeight: 600 }}>{getPrimaryText(item)}</Typography>
+                                }
+                                secondary={getSecondaryText ? getSecondaryText(item) : ""}
+                            />
+                        </ResponsiveListItem>
+                    </Grid>
+                )
                 }
-                    sx={{
-                        "& .MuiListItem-secondaryAction": {
-                            width: 0,
-                            overflow: 'hidden',
-                            transition: "all ease-in-out .15s"
-                        },
-                        "&:hover .MuiListItem-secondaryAction": {
-                            width: "9rem",
-                            transition: "all ease-in-out .15s"
-                        }
-                    }}
-                >
-                    <ListItemButton component={Link} to={getDetailsLink(item)}>
-                        <ListItemText primary={
-                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{getPrimaryText(item)}</Typography>
-                        }
-                            secondary={getSecondaryText ? getSecondaryText(item) : ""}
-                        />
-                    </ListItemButton>
-                </ListItem>
-            )
-            }
+
+
+            </Grid>
         </List >
     )
 }

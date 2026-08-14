@@ -1,12 +1,44 @@
-import { CircularProgress, InputBase, List, ListItem, ListItemButton, ListItemText, Paper, Stack, Typography } from "@mui/material";
+import { CircularProgress, InputBase, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, Paper, Stack, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import SearchIcon from '@mui/icons-material/Search';
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { SearchResults } from "../../types/shared";
 import { useDebounce } from "../../hooks/useDebounce";
-import { generalSearch } from "./searchServices";
 import { showCommonErrorToast } from "src/utils/feedback";
+import { generalSearch } from "src/services/generalService";
+import { getLeadTitleArray } from "../lead/leadUtils";
+import type { Lead } from "src/types/leads";
+import { UserAvatar } from "src/components/ui/details/UserAvatar";
+
+export const getSearchCategories = (results: SearchResults | null) =>
+    [
+        {
+            label: "Leads", id: "search-bar-leads", "aria-controls": "search-bar-leads", items: results?.leads ?? [],
+            getRoute: (id: string) => `/leads/${id}`,
+            getPrimaryItemText: (lead: Lead) => getLeadTitleArray(lead).join(" "),
+            getSecondaryItemText: (lead: Lead) => lead.campaign?.name
+        },
+        /* Agregar items si se quieren más entidades
+        {
+            label: "Espacios de Trabajo", id: "search-bar-workspaces", "aria-controls": "search-bar-workspaces", items: results?.workspaces ?? [],
+            getRoute: (id: string) => `/campaigns/?selected=${id}`, getPrimaryItemText: (wsp: Workspace) => wsp.name
+        },
+        {
+            label: "Campañas", id: "search-bar-campaigns", "aria-controls": "search-bar-campaigns", items: results?.campaigns ?? [],
+            getRoute: (id: string) => `/campaigns/${id}`, getPrimaryItemText: (cmp: Campaign) => cmp.name
+        },
+        {
+            label: "Nomencladores", id: "search-bar-nomenclators", "aria-controls": "search-bar-nomenclators", items: results?.nomenclators ?? [],
+            getRoute: (id: string) => `/nomenclators/?selected=${id}`, getPrimaryItemText: (nom: Nomenclator) => nom.name
+        },
+        {
+            label: "Ítems de Nomenclador", id: "search-bar-nomenclator_items", "aria-controls": "search-bar-nomenclator_items", items: results?.nomenclator_items ?? [],
+            getRoute: (id: string) => `/nomenclators/?selected=${id}`, getPrimaryItemText: (item: NomenclatorItem) => item.value
+        }
+            */
+    ]
+
 
 const Search = styled('div')(({ theme }) => ({
     borderRadius: theme.shape.borderRadius,
@@ -32,14 +64,13 @@ const SearchIconWrapper = styled('div')(({ theme }) => ({
 }));
 
 const StyledInputBase = styled(InputBase)(({ theme }) => ({
-    flexGrow: 1,
+    flex: 1,
+    width: '100%',
+    paddingRight: "1em",
     '& .MuiInputBase-input': {
         padding: theme.spacing(1, 0),
         transition: theme.transitions.create('width'),
         width: '100%',
-        [theme.breakpoints.up('md')]: {
-            width: '20ch',
-        },
     },
 }));
 
@@ -63,6 +94,8 @@ const SearchOptions = styled('div')(() => ({
     display: "none"
 }));
 
+const MAX_ITEMS = 5 as const
+
 export const HeaderSearchBar = () => {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<SearchResults | null>(null);
@@ -80,23 +113,7 @@ export const HeaderSearchBar = () => {
         )
     }, [query, debouncedFunction])
 
-    const options = useMemo(() => [
-        {
-            label: "Leads", id: "search-bar-leads", "aria-controls": "search-bar-leads", length: results?.leads?.length ?? 0
-        },
-        {
-            label: "Campañas", id: "search-bar-campaigns", "aria-controls": "search-bar-campaigns", length: results?.campaigns?.length ?? 0
-        },
-        {
-            label: "Espacios de Trabajo", id: "search-bar-workspaces", "aria-controls": "search-bar-workspaces", length: results?.workspaces?.length ?? 0
-        },
-        {
-            label: "Nomencladores", id: "search-bar-nomenclators", "aria-controls": "search-bar-nomenclators", length: results?.nomenclators?.length ?? 0
-        },
-        {
-            label: "Ítems de Nomenclador", id: "search-bar-nomenclator_items", "aria-controls": "search-bar-nomenclator_items", length: results?.nomenclator_items?.length ?? 0
-        },
-    ], [results])
+    const searchCategories = useMemo(() => getSearchCategories(results), [results])
 
     const lengthText = (length: number) => {
         if (length === 0) return "Sin resultados"
@@ -105,19 +122,21 @@ export const HeaderSearchBar = () => {
     }
 
     const totalResults = useMemo(() => {
-        if (!results) return 0
-        return Object.entries(results).reduce((acc, value) => acc + value[1].length, 0)
-    }, [results])
+        return searchCategories.reduce((acc, value) => acc + (value?.items?.length ?? 0), 0)
+    }, [searchCategories])
+
+    const categoriesWithItems = useMemo(() => {
+        return searchCategories.reduce((acc, value) => acc + (value?.items?.length > 0 ? 1 : 0), 0)
+    }, [searchCategories])
 
     return (
-
         <SearchWrapper sx={{ flexGrow: 1 }}>
             <Search className="search-input-wrap">
                 <SearchIconWrapper>
                     <SearchIcon />
                 </SearchIconWrapper>
                 <StyledInputBase className="search-input"
-                    placeholder="Buscar en la página"
+                    placeholder="Buscar Leads en el sistema"
                     inputProps={{ 'aria-label': 'search' }}
                     onChange={(e) => setQuery(e.target.value)}
                 />
@@ -125,7 +144,7 @@ export const HeaderSearchBar = () => {
             {query.length >= 3 &&
                 <SearchOptions className="search-options-wrap">
                     <Paper>
-                        <List>
+                        <List dense>
                             {loading &&
                                 <ListItem disablePadding >
                                     <ListItemButton>
@@ -138,32 +157,72 @@ export const HeaderSearchBar = () => {
                                     </ListItemButton>
                                 </ListItem>
                             }
-                            {!loading && totalResults > 0 &&
-                                options.map((option, idx) => {
-                                    return <ListItem disablePadding key={option.id} sx={{ display: option.length > 0 ? "block" : "none" }}>
-                                        <ListItemButton component={Link} to={`/search?query=${query}&tab=${idx}`}>
-                                            <ListItemText primary={
-                                                <Stack direction="row" spacing={1} sx={{ alignItems: "baseline" }}>
-                                                    <Typography variant="body1" sx={{ fontWeight: 600 }}>{option.label}</Typography>
-                                                    <Typography variant="body2" sx={{ fontStyle: "italic" }}>{`- ${lengthText(option.length)}`}</Typography>
-                                                </Stack>
-                                            }
-                                            />
-                                        </ListItemButton>
-                                    </ListItem>
-                                })
-                            }
                             {!loading && totalResults === 0 &&
                                 <ListItem disablePadding >
                                     <ListItemButton>
-                                        <ListItemText primary={"No hay resultados"} />
+                                        <ListItemText primary="No hay resultados" />
                                     </ListItemButton>
                                 </ListItem>
+                            }
+                            {//Si hay muchas entidades con opciones, muestra un resumen de cada una
+                                !loading && categoriesWithItems > 1 &&
+                                searchCategories.map((option, idx) => {
+                                    if (!option.items || option.items.length === 0) return
+                                    return (
+                                        <ListItem disablePadding key={option.id}>
+                                            <ListItemButton component={Link} to={`/search?query=${query}&tab=${idx}`}>
+                                                <ListItemText primary={
+                                                    <Typography variant="body1" sx={{ fontWeight: 600 }}>{option.label}</Typography>
+                                                }
+                                                    secondary={lengthText(option.items?.length)}
+                                                />
+                                            </ListItemButton>
+                                        </ListItem>
+                                    )
+                                })
+                            }
+                            {//Si solo hay una categoría, muestra los primeros X items, y "Ver todos los resultados"
+                                !loading && categoriesWithItems === 1 && totalResults > 0 &&
+                                searchCategories.map((option, idx) => {
+                                    if (!option.items || option.items.length === 0) return
+                                    return (
+                                        <>
+                                            {option.items.map((item, itemIdx) => {
+                                                if (itemIdx >= MAX_ITEMS) return
+                                                return <ListItem disablePadding key={item.id}>
+                                                    <ListItemButton component={Link} to={option.getRoute(item.id)}>
+                                                        <ListItemAvatar>
+                                                            <UserAvatar name={option.getPrimaryItemText(item)} />
+                                                        </ListItemAvatar>
+                                                        <ListItemText primary={
+                                                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{option.getPrimaryItemText(item)}</Typography>
+                                                        }
+                                                            secondary={option.getSecondaryItemText?.(item)}
+                                                        />
+                                                    </ListItemButton>
+                                                </ListItem>
+                                            })}
+                                            <ListItem disablePadding key={option.id}>
+                                                <ListItemButton component={Link} to={`/search?query=${query}&tab=${idx}`} >
+                                                    <ListItemText primary={
+                                                        <Stack direction="row" sx={{ justifyContent: "center", width: "100%" }}>
+                                                            <Typography variant="body1" sx={{ fontWeight: 600 }}>Ver todo</Typography>
+                                                        </Stack>
+                                                    }
+                                                        secondary={
+                                                            <Stack direction="row" sx={{ justifyContent: "center", width: "100%" }}>
+                                                                {lengthText(option.items?.length)}
+                                                            </Stack>}
+                                                    />
+                                                </ListItemButton>
+                                            </ListItem>
+                                        </>
+                                    )
+                                })
                             }
                         </List>
                     </Paper>
                 </SearchOptions>}
         </SearchWrapper>
-
     )
 }

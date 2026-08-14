@@ -7,3 +7,8 @@ export const getDictionaries = async (keys: DictTypes[]): Promise<Dictionary> =>
   const res = await axiosCRM.get(`/metadata/dictionaries`, { params: { keys: keys.join(",") } })
   return res.data
 }
+
+export const generalSearch = async (query: string) => {
+  const res = await axiosCRM.get(`/search`, { params: { query } })
+  return res.data
+}

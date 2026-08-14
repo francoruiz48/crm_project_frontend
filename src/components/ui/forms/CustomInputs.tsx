@@ -77,7 +77,7 @@ export const ControlledSlider = <T extends FieldValues>
   ({ control, label, name, required = false, errorMessage, min = 0, max, defaultValue = 0, step = 1, type = "slider", size = "medium", ...props }: ControlledSliderProps<T>) => {
   return (
     <Controller name={name} control={control} render={({ field }) => (
-      <FormControl error={!!errorMessage} fullWidth size={size}>
+      <FormControl error={!!errorMessage} fullWidth size={size} onClick={(e) => e.stopPropagation()}>
         <Stack direction="row" spacing={1} sx={{ alignItems: "center", px: 1 }}>
           {props.startAdornment}
           <Stack sx={{ flexGrow: 1 }}>

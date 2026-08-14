@@ -418,9 +418,21 @@ const InlineFieldEdit = ({ fieldValue, lead, updateLeadInfo, children, editing, 
         onEditingChange(false)
     }
 
+    //Al hacer clic sobre un elemento no focuseable del grupo (ej. los íconos de estrella de un campo
+    //Rating), el navegador dispara el blur con relatedTarget = null ANTES de mover el foco al input asociado al label 
+    // Este ref marca que el próximo blur proviene de un mousedown dentro
+    //del grupo, y handleGroupBlur lo ignora. Se limpia solo vía timeout porque el blur puede no
+    //dispararse (si nada tenía el foco) y el flag no debe quedar "pegado".
+    const pointerDownInsideRef = useRef(false)
+    const handlePointerDown = () => {
+        pointerDownInsideRef.current = true
+        window.setTimeout(() => { pointerDownInsideRef.current = false }, 0)
+    }
+
     //Blur del grupo entero: si el foco se movió a otro campo DENTRO del mismo grupo (ej. del
     //selector padre a su hijo dependiente), no se considera una salida real y no se guarda todavía.
     const handleGroupBlur = (e: FocusEvent<HTMLDivElement>) => {
+        if (pointerDownInsideRef.current) return
         if (containerRef.current?.contains(e.relatedTarget as Node)) return
         handleSubmit(submitLoad)()
     }
@@ -457,7 +469,7 @@ const InlineFieldEdit = ({ fieldValue, lead, updateLeadInfo, children, editing, 
     }
 
     return (
-        <Box ref={containerRef} onBlur={handleGroupBlur} onKeyDown={onKeyDown}>
+        <Box ref={containerRef} onBlur={handleGroupBlur} onKeyDown={onKeyDown} onPointerDown={handlePointerDown}>
             <Stack spacing={1.5}>
                 <LeadFormFieldType register={register} control={control} setValue={setValue} name="values.0.value"
                     leadField={fieldData} lead={lead} size="small" errorMessage={errors?.values?.[0]?.value?.message} />

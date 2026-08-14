@@ -14,9 +14,9 @@ export const useDebounce = (timeout = 1000) => {
 
     const debouncedFunction = useCallback((callback: () => void) => {
         clearTimeout(idTimeout.current)
+        setLoading(true)
         idTimeout.current = setTimeout(() => {
             try {
-                setLoading(true)
                 callback()
             }
             catch (e) {
