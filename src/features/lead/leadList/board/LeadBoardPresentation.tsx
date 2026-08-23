@@ -6,14 +6,19 @@ import { LeadBoardColumn } from './LeadBoardColumn';
 import { changeContactStateLead } from '../../leadService';
 import { getLeadContactStates } from 'src/features/orgProperties/contactState/contactStatesServices';
 import type { LeadContactState } from 'src/types/orgProperties';
+import type { BoardCardFieldCode } from '../../boardCardFields';
 
 interface LeadBoardPresentationProps {
     campaignId: number | string;
     activeFilters: unknown[];
     searchQuery?: string;
+    cardFields: BoardCardFieldCode[];
+    // Clic simple: abre el sidebar de detalle rápido. Ir al detalle completo es explícito, con el
+    // ícono de la card.
+    onLeadClick?: (id: string) => void;
 }
 
-export const LeadBoardPresentation = ({ campaignId, activeFilters, searchQuery }: LeadBoardPresentationProps) => {
+export const LeadBoardPresentation = ({ campaignId, activeFilters, searchQuery, cardFields, onLeadClick }: LeadBoardPresentationProps) => {
     const [columns, setColumns] = useState<LeadContactState[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -131,6 +136,8 @@ export const LeadBoardPresentation = ({ campaignId, activeFilters, searchQuery }
                         campaignId={campaignId}
                         activeFilters={activeFilters}
                         searchQuery={searchQuery}
+                        cardFields={cardFields}
+                        onLeadClick={onLeadClick}
                     />
                 ))}
             </Box>

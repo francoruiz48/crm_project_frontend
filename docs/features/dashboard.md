@@ -28,6 +28,8 @@ function DashboardRouter() {
 }
 ```
 
+Ambas páginas usan los componentes compartidos `StatCard` (`details/StatCard.tsx`) para las tarjetas de métricas y `CommonCRMText`/`CommonCRMTitle` (`details/CommonText.tsx`) para toda su tipografía (sin `fontSize`/`fontWeight` inline).
+
 ## Servicios (`dashboardServices.ts`)
 ```tsx
 getDashboardStats() → DashboardStats

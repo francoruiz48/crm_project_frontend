@@ -49,7 +49,7 @@ interface FormFilter {
     value_to?: string                   // DATE/DATE_TIME: fecha fin
     value_num_from?: number             // NUMBER/INT: valor mínimo
     value_num_to?: number               // NUMBER/INT: valor máximo
-    value_ids?: number[]                // NATIVE_ID y SELECTOR: multi-select
+    value_ids?: (number | string)[]     // NATIVE_ID y SELECTOR: multi-select -- uuid string desde Fase 3/4
 }
 
 interface LeadListFilters {
@@ -77,18 +77,28 @@ function apiFiltersToFormFilters(apiFilters: LeadFilter[], leadFields: LeadField
 
     const result: FormFilter[] = []
     for (const [rawFieldId, filters] of byField.entries()) {
-        // Campos nativos usan nativeKey (string) como field_id; los custom usan el ID numérico
-        const field = leadFields.find(f =>
-            typeof rawFieldId === 'string' ? f.nativeKey === rawFieldId : f.id === rawFieldId
-        )
+        // Campos nativos usan nativeKey (string) como field_id. Los custom, desde Fase 3, usan
+        // su public_uuid (también string) como field_id -- el typeof no alcanza para distinguirlos.
+        // Bug real encontrado 2026-08-10: al asumir "string == nativo" cualquier filtro sobre un
+        // campo custom (uuid) nunca matcheaba contra nativeKey, `field` quedaba undefined y el
+        // filtro se descartaba acá (silencioso) -- se aplicaba al fetch (que no pasa por acá) pero
+        // no se veía en el panel de filtros del sidebar al cargar una vista guardada. No hay
+        // colisión posible entre un uuid y un nativeKey tipo "contact_state_id", así que probamos
+        // ambas formas.
+        const field = leadFields.find(f => f.nativeKey === rawFieldId || f.id === rawFieldId)
         if (!field) continue
 
         const typeCode = field.field_type_code
 
         if (typeCode === 'NATIVE_ID') {
+            // Bug real encontrado 2026-08-10: acá se hacía Number(f.value), pero los ids de
+            // NATIVE_ID (contact_state_id, current_state_id, team_id, assigned_to_user_id,
+            // created_by, updated_by) son public_uuid (string) desde Fase 3/4 -- Number(uuid)
+            // da NaN y el Autocomplete no encuentra ninguna opción, mostrando el filtro vacío
+            // aunque el field sí matchee. Se deja el valor tal cual viene.
             const ids = filters.flatMap(f =>
-                Array.isArray(f.value) ? (f.value as number[]) : (f.value != null ? [Number(f.value)] : [])
-            )
+                Array.isArray(f.value) ? f.value : (f.value != null ? [f.value] : [])
+            ) as (number | string)[]
             result.push({ field_id: field.id, value_ids: ids })
 
         } else if (DATE_TYPES.includes(typeCode)) {
@@ -108,9 +118,10 @@ function apiFiltersToFormFilters(apiFilters: LeadFilter[], leadFields: LeadField
             })
 
         } else if (typeCode === 'SELECTOR') {
+            // Mismo bug que NATIVE_ID de arriba: NomenclatorItem.id es public_uuid desde Fase 4.
             const ids = filters.flatMap(f =>
-                Array.isArray(f.value) ? (f.value as number[]) : (f.value != null ? [Number(f.value)] : [])
-            )
+                Array.isArray(f.value) ? f.value : (f.value != null ? [f.value] : [])
+            ) as (number | string)[]
             result.push({ field_id: field.id, value_ids: ids })
 
         } else if (typeCode === 'BOOL') {
@@ -152,7 +163,6 @@ interface LeadFiltersProps {
     showTitle?: boolean,
     showHeaders?: boolean,
     showSectionHeader?: boolean,
-    activeFilterCount?: number,
     formResetKey?: number,   // incrementar para forzar reset del formulario (ej: al cargar vista guardada)
 }
 
@@ -160,7 +170,7 @@ interface LeadFiltersProps {
 export const LeadFilters = memo(({
     campaignId, filters, applyFilters, onClose,
     showCancelButton = true, showTitle = true,
-    showHeaders = true, showSectionHeader = false, activeFilterCount = 0,
+    showHeaders = true, showSectionHeader = false,
     formResetKey,
 }: LeadFiltersProps) => {
 
@@ -351,6 +361,25 @@ export const LeadFilters = memo(({
         reset({ filters: [{}], headers })
         return applyFilters({ filters: [], headers })
     }, [getValues, reset, applyFilters])
+
+    // Bug real encontrado 2026-08-11 (reportado por el usuario): sacar una fila con la cruz
+    // (LeadFiltersItem, botón "Eliminar filtro") solo llamaba a remove(idx) de useFieldArray --
+    // un cambio local al borrador del formulario, sin submit. Sacar TODOS los filtros con la
+    // cruz no volvía a traer los leads sin filtrar: el filtro viejo seguía aplicado hasta un
+    // "Aplicar filtros" explícito que nunca llegaba, aunque el contador (ya arreglado arriba)
+    // mostrara 0. Se trata la remoción como una acción completa -- mismo criterio que
+    // handleClear (Limpiar filtros), que ya aplica al instante -- a diferencia de agregar/
+    // tipear un valor, que sí conviene que espere al click explícito (si no, cada tecla
+    // dispararía una búsqueda).
+    //
+    // Solo en el panel lateral (showCancelButton=false): en el modal de filtros
+    // (LeadListOptions.tsx, showCancelButton=true) aplicar al instante rompería el botón
+    // "Cancelar" -- la remoción ya habría impactado la lista real antes de poder cancelarla.
+    const removeAndApply = useCallback<UseFieldArrayRemove>((idx) => {
+        remove(idx)
+        if (!showCancelButton) handleSubmit(applyFilterLoad)()
+    }, [remove, showCancelButton, handleSubmit, applyFilterLoad])
+
     const isCompact = !showHeaders
 
     return (
@@ -364,12 +393,27 @@ export const LeadFilters = memo(({
                             sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.7, color: 'text.disabled' }}>
                             Filtros
                         </Typography>
-                        {activeFilterCount > 0 && (
+                        {/*
+                          Bug real encontrado 2026-08-11 (reportado por el usuario -- "el contador
+                          queda mal" al sacar un filtro con la cruz): antes este número usaba
+                          activeFilterCount (prop derivada de los filtros ya APLICADOS a la
+                          búsqueda, filters.length en LeadListPage). La cruz de cada fila
+                          (LeadFiltersItem, remove(idx)) solo edita el borrador del formulario --
+                          no dispara submit -- así que el contador no se movía hasta apretar
+                          "Aplicar filtros". Encima, filters.length cuenta entradas crudas de la
+                          API, no filas: un rango Desde/Hasta (NUMBER o DATE) son dos entradas
+                          (gte+lte) para una sola fila visual, así que el número tampoco
+                          coincidía con lo que se veía en el panel. filledFields ya existe acá
+                          (fields con field_id elegido) y refleja el estado VIVO del formulario --
+                          se actualiza al instante al agregar/sacar una fila, y cuenta 1 por fila
+                          sin importar cuántas entradas de LeadFilter genere al aplicar.
+                        */}
+                        {filledFields.length > 0 && (
                             <Typography variant="caption" sx={{
                                 bgcolor: alpha(palette.success.main, 0.12),
                                 color: 'success.dark', borderRadius: 1, px: 0.75, fontWeight: 600,
                             }}>
-                                {activeFilterCount}
+                                {filledFields.length}
                             </Typography>
                         )}
                     </Stack>
@@ -417,7 +461,7 @@ export const LeadFilters = memo(({
                                     register={register}
                                     leadFields={leadFields}
                                     errors={errors}
-                                    remove={remove}
+                                    remove={removeAndApply}
                                     disabled={loading}
                                     canDelete
                                     compact={isCompact}
@@ -516,7 +560,7 @@ export const LeadFiltersItem = memo(({
     const boolValue = useWatch({ name: `filters.${idx}.value` as Path<LeadListFilters>, control })
     const valueNumFrom = useWatch({ name: `filters.${idx}.value_num_from` as Path<LeadListFilters>, control })
     const valueNumTo = useWatch({ name: `filters.${idx}.value_num_to` as Path<LeadListFilters>, control })
-    const valueIds = useWatch({ name: `filters.${idx}.value_ids` as Path<LeadListFilters>, control }) as number[] | undefined
+    const valueIds = useWatch({ name: `filters.${idx}.value_ids` as Path<LeadListFilters>, control }) as (number | string)[] | undefined
 
     const selectedField = useMemo(() => filteredFields.find(i => i.id === selectedFieldId), [filteredFields, selectedFieldId])
 

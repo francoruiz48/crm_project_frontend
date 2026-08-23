@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import {
     Box, Chip, CircularProgress, Divider,
-    Paper, Stack, Typography, useTheme,
+    Paper, Stack, useTheme,
 } from "@mui/material"
 import {
     LeaderboardOutlined, PeopleOutlined, TrendingUpOutlined,
@@ -10,21 +10,8 @@ import { getOrgDashboard, type OrgDashboard, type LeadsByState } from "src/featu
 import { useUserContext } from "src/stores/UserContext"
 import { showCommonErrorToast } from "src/utils/feedback"
 import { UserAvatar } from "src/components/ui/details/UserAvatar"
-
-// ── Stat card ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, icon, color }: { label: string; value: number | string; icon: React.ReactNode; color: string }) {
-    return (
-        <Paper variant="outlined" sx={{ flex: 1, p: 2.5, borderRadius: 2, borderLeft: `4px solid ${color}` }}>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-                <Box sx={{ color, bgcolor: `${color}18`, borderRadius: 1.5, p: 1, display: "flex" }}>{icon}</Box>
-                <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1 }}>{value}</Typography>
-                    <Typography variant="caption" color="text.secondary">{label}</Typography>
-                </Box>
-            </Stack>
-        </Paper>
-    )
-}
+import { CommonCRMText, CommonCRMTitle } from "src/components/ui/details/CommonText"
+import StatCard from "src/components/ui/details/StatCard"
 
 // ── Shared donut ──────────────────────────────────────────────────────────────
 const PALETTE_A = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"]
@@ -42,21 +29,23 @@ function DonutChart({ data, colors = PALETTE_B }: DonutProps) {
 
     if (total === 0) return (
         <Stack sx={{ height: size, alignItems: "center", justifyContent: "center" }}>
-            <Typography variant="body2" color="text.secondary">Sin datos</Typography>
+            <CommonCRMText variant="body2" color="text.secondary">Sin datos</CommonCRMText>
         </Stack>
     )
 
-    let angle = -Math.PI / 2
+    // Ángulo de inicio acumulado de cada porción, derivado de los totales previos
+    // (equivalente a ir sumando `angle` porción a porción, pero sin mutar variables durante el render)
+    const starts = data.map((_, i) => data.slice(0, i).reduce((sum, d) => sum + d.total, 0))
     const slices = data.map((item, i) => {
         const pct = item.total / total
         const sweep = pct * 2 * Math.PI - gap
-        const start = angle + gap / 2, end = start + sweep
+        const start = -Math.PI / 2 + (starts[i] / total) * 2 * Math.PI + gap / 2
+        const end = start + sweep
         const x1 = cx + r * Math.cos(start), y1 = cy + r * Math.sin(start)
         const x2 = cx + r * Math.cos(end), y2 = cy + r * Math.sin(end)
         const large = sweep > Math.PI ? 1 : 0
         const path = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`
         const color = item.color ?? colors[i % colors.length]
-        angle += pct * 2 * Math.PI
         return { path, color, item, pct }
     })
 
@@ -80,15 +69,15 @@ function DonutChart({ data, colors = PALETTE_B }: DonutProps) {
                 <Box sx={{ position: "absolute", textAlign: "center", pointerEvents: "none" }}>
                     {active ? (
                         <>
-                            <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1, color: active.color }}>{active.item.total}</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", maxWidth: 62, lineHeight: 1.2, fontSize: 9 }}>
+                            <CommonCRMTitle titleLevel="h6" component="p" font="display" sx={{ lineHeight: 1, color: active.color }}>{active.item.total}</CommonCRMTitle>
+                            <CommonCRMText variant="caption" color="text.secondary" sx={{ display: "block", maxWidth: 62, lineHeight: 1.2 }}>
                                 {active.item.state_name}
-                            </Typography>
+                            </CommonCRMText>
                         </>
                     ) : (
                         <>
-                            <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1 }}>{total}</Typography>
-                            <Typography variant="caption" color="text.secondary">leads</Typography>
+                            <CommonCRMTitle titleLevel="h5" component="p" font="display" sx={{ lineHeight: 1 }}>{total}</CommonCRMTitle>
+                            <CommonCRMText variant="caption" color="text.secondary">leads</CommonCRMText>
                         </>
                     )}
                 </Box>
@@ -104,11 +93,11 @@ function DonutChart({ data, colors = PALETTE_B }: DonutProps) {
                         <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 0.2 }}>
                             <Stack direction="row" spacing={0.7} sx={{ alignItems: "center" }}>
                                 <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: s.color, flexShrink: 0 }} />
-                                <Typography variant="caption" noWrap sx={{ lineHeight: 1 }}>{s.item.state_name}</Typography>
+                                <CommonCRMText variant="caption" noWrap sx={{ lineHeight: 1 }}>{s.item.state_name}</CommonCRMText>
                             </Stack>
-                            <Typography variant="caption" sx={{ fontWeight: 700, color: s.color, ml: 1, flexShrink: 0 }}>
+                            <CommonCRMText variant="caption" sx={{ color: s.color, ml: 1, flexShrink: 0 }}>
                                 {s.item.total}
-                            </Typography>
+                            </CommonCRMText>
                         </Stack>
                         <Box sx={{ height: 4, bgcolor: "action.hover", borderRadius: 3, overflow: "hidden" }}>
                             <Box sx={{ height: "100%", width: `${(s.pct * 100).toFixed(1)}%`, bgcolor: s.color, borderRadius: 3, transition: "width 0.5s ease" }} />
@@ -135,8 +124,15 @@ export function OrgDashboardPage() {
     const [loading, setLoading] = useState(true)
     const { palette } = useTheme()
 
-    useEffect(() => {
+    // Al cambiar de organización se reinicia el spinner: ajuste de estado durante el render
+    // (patrón de React para reaccionar a cambios de props sin setState síncrono en el effect)
+    const [prevOrgId, setPrevOrgId] = useState(activeOrg?.id)
+    if (activeOrg?.id !== prevOrgId) {
+        setPrevOrgId(activeOrg?.id)
         setLoading(true)
+    }
+
+    useEffect(() => {
         getOrgDashboard()
             .then(setData)
             .catch(showCommonErrorToast)
@@ -166,8 +162,8 @@ export function OrgDashboardPage() {
                         <LeaderboardOutlined sx={{ fontSize: 32 }} />
                     </Box>
                     <Box>
-                        <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1 }}>Dashboard</Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.8, mt: 0.3 }}>{activeOrg?.name}</Typography>
+                        <CommonCRMTitle titleLevel="h3" font="display" sx={{ lineHeight: 1 }}>Dashboard</CommonCRMTitle>
+                        <CommonCRMText variant="body2" sx={{ opacity: 0.8, mt: 0.3 }}>{activeOrg?.name}</CommonCRMText>
                     </Box>
                 </Stack>
             </Paper>
@@ -184,9 +180,9 @@ export function OrgDashboardPage() {
 
                 {/* Columna izquierda — Actividad reciente (ocupa todo el alto) */}
                 <Paper variant="outlined" sx={{ flex: 1.4, p: 2.5, borderRadius: 2, display: "flex", flexDirection: "column" }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>Actividad reciente</Typography>
+                    <CommonCRMTitle titleLevel="h4" sx={{ mb: 2 }}>Actividad reciente</CommonCRMTitle>
                     {data.recent_activity.length === 0
-                        ? <Typography variant="body2" color="text.secondary">Sin actividad</Typography>
+                        ? <CommonCRMText variant="body2" color="text.secondary">Sin actividad</CommonCRMText>
                         : (
                             <Stack spacing={0} sx={{ flex: 1 }}>
                                 {data.recent_activity.slice(0, 15).map((a, i, arr) => {
@@ -196,17 +192,17 @@ export function OrgDashboardPage() {
                                             sx={{ alignItems: "flex-start", py: 1, borderBottom: i < arr.length - 1 ? `1px solid ${palette.divider}` : "none" }}>
                                             <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: color, mt: 0.65, flexShrink: 0 }} />
                                             <Box sx={{ flex: 1, minWidth: 0 }}>
-                                                <Typography variant="body2" sx={{ lineHeight: 1.3 }}>
-                                                    <Box component="span" sx={{ fontWeight: 600, color }}>{ACTION_LABEL[a.action] ?? a.action}</Box>
+                                                <CommonCRMText variant="body2" sx={{ lineHeight: 1.3 }}>
+                                                    <Box component="span" sx={{ color }}>{ACTION_LABEL[a.action] ?? a.action}</Box>
                                                     {" "}{a.entity_type}
-                                                </Typography>
+                                                </CommonCRMText>
                                                 {a.user_name && (
-                                                    <Typography variant="caption" color="text.secondary" noWrap>{a.user_name}</Typography>
+                                                    <CommonCRMText variant="caption" color="text.secondary" noWrap>{a.user_name}</CommonCRMText>
                                                 )}
                                             </Box>
-                                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
+                                            <CommonCRMText variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
                                                 {new Date(a.created_at).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })}
-                                            </Typography>
+                                            </CommonCRMText>
                                         </Stack>
                                     )
                                 })}
@@ -219,26 +215,26 @@ export function OrgDashboardPage() {
                 <Stack spacing={3} sx={{ flex: 1 }}>
                     {/* Flujo */}
                     <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>Etapas</Typography>
+                        <CommonCRMTitle titleLevel="h4" sx={{ mb: 2 }}>Etapas</CommonCRMTitle>
                         <DonutChart data={data.leads_by_flow_state} colors={PALETTE_B} />
                     </Paper>
 
                     {/* Contacto */}
                     <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>Estados</Typography>
+                        <CommonCRMTitle titleLevel="h4" sx={{ mb: 2 }}>Estados</CommonCRMTitle>
                         <DonutChart data={data.leads_by_contact_state} colors={PALETTE_A} />
                     </Paper>
 
                     {/* Equipo */}
                     <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>Equipo</Typography>
+                        <CommonCRMTitle titleLevel="h4" sx={{ mb: 1.5 }}>Equipo</CommonCRMTitle>
                         <Stack divider={<Divider />}>
                             {data.org_users.map(u => (
                                 <Stack key={u.id} direction="row" spacing={1.5} sx={{ alignItems: "center", py: 1 }}>
                                     <UserAvatar name={`${u.name} ${u.last_name ?? ""}`} size={34} tooltip />
                                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                                        <Typography variant="body2" sx={{ fontWeight: 500 }} noWrap>{u.name} {u.last_name ?? ""}</Typography>
-                                        <Typography variant="caption" color="text.secondary" noWrap>{u.email}</Typography>
+                                        <CommonCRMText variant="body2" noWrap>{u.name} {u.last_name ?? ""}</CommonCRMText>
+                                        <CommonCRMText variant="caption" color="text.secondary" noWrap>{u.email}</CommonCRMText>
                                     </Box>
                                     {u.is_owner && <Chip label="Propietario" size="small" color="primary" variant="outlined" sx={{ fontSize: 11 }} />}
                                 </Stack>

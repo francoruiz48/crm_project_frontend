@@ -11,6 +11,7 @@ import FindInPageIcon from '@mui/icons-material/FindInPage';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import DynamicFormIcon from '@mui/icons-material/DynamicForm';
 
 const ROUTE_ICONS = {
     DASHBOARD: <DashboardIcon />,
@@ -20,6 +21,7 @@ const ROUTE_ICONS = {
     WORKSPACES: <WorkIcon />,
     NOMENCLATORS: <LabelImportantIcon />,
     AUTOMATIONS: <AutoFixHighIcon />,
+    WEB_FORMS: <DynamicFormIcon />,
     ORGANIZATIONS: <StoreIcon />,
     ORG_PROPERTIES: <TuneIcon />,
     ROLES: <LockIcon />,

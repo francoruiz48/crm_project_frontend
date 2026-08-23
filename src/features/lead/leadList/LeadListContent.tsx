@@ -10,11 +10,13 @@ import { Stack, Typography, ButtonGroup } from "@mui/material"
 import FilterAltOffIcon from '@mui/icons-material/FilterAltOff'
 import { LeadBoardPresentation } from "./board/LeadBoardPresentation"
 import { Can } from "src/components/auth/Can"
+import type { BoardCardFieldCode } from "../boardCardFields"
 
 interface LeadListContentProps {
     leads: Lead[],
     leadFields: LeadField[],
     selectedFieldIds: string[],
+    cardFields: BoardCardFieldCode[],
     activeFilters: number,
     modalProps: {
         openModalId?: string;
@@ -42,13 +44,16 @@ interface LeadListContentProps {
     // leads por columna, no depende de este array `leads` -- también pueda filtrar por búsqueda.
     searchQuery?: string,
     onClearFilters?: () => void,
+    // Clic simple: abre el sidebar de detalle rápido (LeadDetailsSidebar, ver LeadListPage). Ir al
+    // detalle completo es explícito, con el ícono de la fila/card -- ya no hay doble clic.
+    onLeadClick?: (id: string) => void,
 }
 
 /**
  * Wrapper del contenido, realiza la lógica de selectedColumns, y elige el modo de vista deseado.
  */
-export const LeadListContent = memo(({ leads, leadFields, selectedFieldIds, activeFilters = 0, modalProps, orderProps, handleSelectedFieldIds,
-    selectCheckboxProps, presentationMode, workspaceId, campaignId, filters, searchQuery, onClearFilters }: LeadListContentProps) => {
+export const LeadListContent = memo(({ leads, leadFields, selectedFieldIds, cardFields, activeFilters = 0, modalProps, orderProps, handleSelectedFieldIds,
+    selectCheckboxProps, presentationMode, workspaceId, campaignId, filters, searchQuery, onClearFilters, onLeadClick }: LeadListContentProps) => {
 
     //Filtra los objetos LeadField para seguir el orden del arreglo de ids.
     const selectedColumns = useMemo(() => {
@@ -67,6 +72,8 @@ export const LeadListContent = memo(({ leads, leadFields, selectedFieldIds, acti
             campaignId={campaignId}
             activeFilters={filters}
             searchQuery={searchQuery}
+            cardFields={cardFields}
+            onLeadClick={onLeadClick}
         />
     }
 
@@ -114,6 +121,7 @@ export const LeadListContent = memo(({ leads, leadFields, selectedFieldIds, acti
         case "LIST": return <p>Lista</p>
         case "GRID": return <p>Grid</p>
         default: return <LeadTablePresentation leads={leads} selectedColumns={selectedColumns}
-            dragProps={dragProps} orderProps={orderProps} modalProps={modalProps} selectCheckboxProps={selectCheckboxProps} />
+            dragProps={dragProps} orderProps={orderProps} modalProps={modalProps} selectCheckboxProps={selectCheckboxProps}
+            onLeadClick={onLeadClick} />
     }
 })

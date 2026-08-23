@@ -51,6 +51,9 @@ declare module '@mui/material/Chip' {
   interface ChipOwnProps {
     defaultColor?: ColorTypes;
     chipColor?: string | null,
+    // Menor border-radius que el chip por defecto (.75rem) -- pensado para diferenciar
+    // visualmente las etiquetas (tags) del resto de los chips (etapa, referencia, etc.).
+    squared?: boolean,
   }
 }
 declare module '@mui/material/Chip' {

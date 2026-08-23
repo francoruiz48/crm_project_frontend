@@ -319,6 +319,37 @@ Caja oscura con fuente monospace para mostrar código:
 <CodeBox>{código}</CodeBox>
 ```
 
+### `CommonCRMText` + `CommonCRMTitle` — `details/CommonText.tsx`
+Componentes wrapper de `Typography` para texto centralizado (ver "Sistema tipográfico" en `convenciones_frontend.md`):
+
+**`CommonCRMText`** — body text con tamaño predefinido:
+```tsx
+<CommonCRMText variant="body1" color="text.secondary" size="sm">Texto pequeño</CommonCRMText>
+<CommonCRMText size="md">Tamaño por defecto</CommonCRMText>
+```
+- `size` (`"xs" | "sm" | "md" | "lg" | "xl"`): mapea a `FONT_SIZES` del theme. Opcional — si no se pasa, usa el default del `variant`
+- `variant`: hereda de `Typography` (body1, body2, caption, etc.)
+- `color`, `sx`, y el resto de props de `Typography` se pasan directamente
+
+**`CommonCRMTitle`** — headings con opción de font display (Sora):
+```tsx
+<CommonCRMTitle titleLevel="h2" component="p" font="display">{value}</CommonCRMTitle>
+<CommonCRMTitle titleLevel="h3">Título normal (Inter)</CommonCRMTitle>
+```
+- `titleLevel` (`"h1" | "h2" | "h3" | "h4" | "h5" | "h6"`): variant de MUI a usar
+- `font` (`"CRM" | "display"`): `"display"` usa la fuente Sora (para números destacados, stat cards). Default: `"CRM"` (Inter)
+- `component`: prop de MUI para controlar el elemento HTML renderizado (ej. `"p"` para que un `h2` se renderice como `<p>`)
+
+### `StatCard` (default export) — `details/StatCard.tsx`
+Tarjeta de métrica para dashboards (valor destacado + ícono + etiqueta):
+```tsx
+<StatCard label="Leads totales" value={data.total_leads} icon={<LeaderboardOutlined fontSize="small" />} color={palette.primary.main} />
+```
+- `label`: texto descriptivo bajo el valor (`CommonCRMText subtitle2`)
+- `value`: número o string destacado (se muestra con `CommonCRMTitle` en fuente display)
+- `icon`: nodo de ícono, teñido con el `color` recibido
+- `color`: color del borde izquierdo y del ícono (hex o token)
+
 ### `NewTabLink` (default export) — `details/NewTabLink.tsx`
 Link que se abre en nueva pestaña, con validación de URL:
 ```tsx

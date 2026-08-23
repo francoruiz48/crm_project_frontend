@@ -2,12 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_LEAD_PAGE_SIZE } from 'src/utils/constants'
 import { LeadListContent } from './LeadListContent'
 import { LeadSidebar } from './LeadSidebar'
+import { LeadDetailsSidebar } from './LeadDetailsSidebar'
 import LeadColumnSelector from '../leadListOptions/LeadColumnSelector'
+import LeadBoardCardFieldsSelector from '../leadListOptions/LeadBoardCardFieldsSelector'
 import { DisableBulkConfirmDialog } from 'src/components/ui/feedback/ConfirmationDialog'
 import { NATIVE_LEAD_FIELDS } from '../nativeLeadFields'
+import { DEFAULT_BOARD_CARD_FIELDS, type BoardCardFieldCode } from '../boardCardFields'
 import { getFieldSelectorGroupName } from 'src/features/leadFields/leadFieldUtils'
 import { LeadCampaignSelector } from '../leadListOptions/LeadListOptions'
 import PaginationComponent from 'shared/ui/lists/PaginationComponent'
+import { ListActionMenu, type ListItemAction } from 'shared/ui/lists/CustomListItem'
 import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen'
 import GenericModal from 'shared/layout/container/GenericModal'
 import { useListPagination } from 'src/hooks/useListPagination'
@@ -15,20 +19,23 @@ import { useSelectCheckbox } from 'src/hooks/useSelectCheckbox'
 import { useOrderList } from 'src/hooks/useOrderList'
 import { useLoading } from 'src/hooks/useLoading'
 import { useModal } from 'src/hooks/useModal'
+import { useSidebar } from 'src/hooks/useSidebar'
 import type { LeadFilter, LeadListParams, ListParams, OrderParams, Paginable } from 'src/types/shared'
-import type { Lead, LeadView, LeadViewParams } from 'src/types/leads'
+import type { Lead, LeadDetailed, LeadView, LeadViewParams } from 'src/types/leads'
 import type { LeadField } from 'src/types/leadFields'
-import { bulkDeleteLead, createView, getFilteredLeads, getLeads, updateView, exportLeads } from '../leadService'
+import { bulkDeleteLead, createView, getFilteredLeads, getLead, getLeads, updateView, exportLeads } from '../leadService'
 import { getLeadFields } from 'src/features/leadFields/leadFieldServices'
 import { showCommonErrorToast, showToast } from 'src/utils/feedback'
 import { useLeadNavigation } from '../stores/LeadNavigationContext'
+import { useLayoutSidebar } from 'src/stores/LayoutSidebarContext'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import {
     Box, Collapse, Divider, IconButton, InputAdornment,
-    Stack, TextField, Tooltip, Typography, useMediaQuery, useTheme
+    Stack, TextField, Typography, useMediaQuery, useTheme
 } from '@mui/material'
 import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import MenuIcon from '@mui/icons-material/Menu'
+import MoreVertIcon from '@mui/icons-material/MoreVert'
 import { Can } from 'src/components/auth/Can'
 import { ListAddButton } from 'src/components/ui/buttons/ExpandingButton'
 import { ChipTooltip } from 'src/components/ui/details/ChipTooltip'
@@ -46,6 +53,10 @@ export const LeadListPage = () => {
     const navigate = useNavigate()
     const theme = useTheme()
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('lg'))
+    // Pantalla lo bastante ancha como para que convivan filtros + panel del lead sin ahogar la
+    // tabla (ver handleLeadClick/handleFiltersToggle más abajo). Por debajo de este punto, abrir
+    // uno cierra el otro.
+    const hasRoomForBoth = useMediaQuery(theme.breakpoints.up('xl'))
 
     // Sidebar
     const [sidebarOpen, setSidebarOpen] = useState(!isSmallScreen)
@@ -192,6 +203,28 @@ export const LeadListPage = () => {
         window.localStorage.setItem('sel_lead_fields', JSON.stringify(stored))
     }, [selectedFieldIds, campaignId])
 
+    // Elementos de la tarjeta del tablero (Subtítulo/Etapa/Equipo/Asignado a) -- mismo patrón de
+    // persistencia que selectedFieldIds (columnas de la tabla) de arriba: localStorage por
+    // campaña, más adelante también en ui_config.card_fields de la vista guardada.
+    const [cardFields, setCardFields] = useState<BoardCardFieldCode[]>(DEFAULT_BOARD_CARD_FIELDS)
+    useEffect(() => {
+        if (!campaignId) return
+        const local = JSON.parse(window.localStorage.getItem('board_card_fields') ?? '{}')?.[campaignId]
+        setCardFields(local ?? DEFAULT_BOARD_CARD_FIELDS)
+    }, [campaignId])
+
+    const handleCardFields = useCallback((fields: BoardCardFieldCode[], closeModal = false) => {
+        setCardFields(fields)
+        if (closeModal) modalProps.handleClose()
+    }, [modalProps])
+
+    useEffect(() => {
+        if (!campaignId) return
+        const stored = JSON.parse(window.localStorage.getItem('board_card_fields') ?? '{}')
+        stored[campaignId] = cardFields
+        window.localStorage.setItem('board_card_fields', JSON.stringify(stored))
+    }, [cardFields, campaignId])
+
     // Presentation mode
     const [presentationMode, setPresentationMode] = useState('TABLE')
     const presentationProps = useMemo(() => ({
@@ -215,20 +248,20 @@ export const LeadListPage = () => {
             name, visibility, campaign_id: String(campaignId),
             filters: { filters },
             sort_config: { order_by: orderProps.orderBy, ascending: orderProps.ascending },
-            ui_config: { selected_ids: selectedFieldIds, fetch_params: fetchParams },
+            ui_config: { selected_ids: selectedFieldIds, fetch_params: fetchParams, card_fields: cardFields },
             view_type: presentationMode,
         })
-    }, [campaignId, fetchParams, filters, orderProps, presentationMode, selectedFieldIds])
+    }, [campaignId, fetchParams, filters, orderProps, presentationMode, selectedFieldIds, cardFields])
 
     const currentView = useMemo(() => {
         if (!campaignId) return
         return {
             filters: { filters },
             sort_config: { order_by: orderProps.orderBy, ascending: orderProps.ascending },
-            ui_config: { selected_ids: selectedFieldIds, fetch_params: fetchParams },
+            ui_config: { selected_ids: selectedFieldIds, fetch_params: fetchParams, card_fields: cardFields },
             view_type: presentationMode,
         } as LeadViewParams
-    }, [campaignId, fetchParams, filters, orderProps, presentationMode, selectedFieldIds])
+    }, [campaignId, fetchParams, filters, orderProps, presentationMode, selectedFieldIds, cardFields])
 
     const loadView = useCallback((view: LeadView) => {
         // view.campaign_id sigue siendo la FK embebida (id interno viejo) -- el uuid real está
@@ -247,6 +280,7 @@ export const LeadListPage = () => {
             setOrderList(view.sort_config.order_by, view.sort_config.ascending)
         }
         if (view?.ui_config?.selected_ids) setSelectedFieldIds(view.ui_config.selected_ids)
+        if (view?.ui_config?.card_fields) setCardFields(view.ui_config.card_fields as BoardCardFieldCode[])
         if (view?.view_type) setPresentationMode(view.view_type)
         fetchLeadLoad(fetchPage, newFilters, { ...newFetchParams, ...newOrderParams }, campaignId)
         setViewLoadKey(k => k + 1)
@@ -274,11 +308,15 @@ export const LeadListPage = () => {
     }, [selectCheckboxProps, campaignId, fetchLeadLoad, fetchPage, filters, headerParams])
 
     // Export / Import
+    // Bug real encontrado 2026-08-11: se mandaba solo campaignId, así que el Excel exportado
+    // siempre traía todos los leads de la campaña sin importar los filtros/búsqueda aplicados en
+    // el listado. Se mandan los mismos filtros y texto buscado que se están usando ahora (son
+    // mutuamente excluyentes, ver setFiltersAndHeaders/handleSearchChange).
     const handleExport = useCallback(async () => {
         if (!campaignId) return
-        try { await exportLeads(campaignId) }
+        try { await exportLeads(campaignId, filters, debouncedQuery) }
         catch (e) { console.error('Error al exportar los leads', e) }
-    }, [campaignId])
+    }, [campaignId, filters, debouncedQuery])
     const { fnWithLoading: exportLoad, loading: exporting } = useLoading(handleExport)
 
     const handleImport = useCallback(() => {
@@ -287,6 +325,106 @@ export const LeadListPage = () => {
     }, [campaignId, navigate])
 
     const hasSelection = selectedCount > 0
+
+    // Sidebar de detalle "rápido" de un lead (clic simple en la Tabla o el Tablero) -- a
+    // diferencia de Workspace/Team (que usan GenericSidebar, un Drawer flotante encima de todo),
+    // este va EMBEBIDO en el layout, compartiendo espacio real con la tabla (ver LeadDetailsSidebar.tsx
+    // y el JSX más abajo). Motivo: un Drawer temporary de MUI monta un backdrop invisible que
+    // captura cualquier clic fuera de él -- clickear otro lead con el sidebar abierto primero lo
+    // cerraba (backdrop) en vez de abrir el lead nuevo, obligando a un clic de más. Al ser inline,
+    // no hay backdrop, así que cambiar de lead es un solo clic.
+    //
+    // A diferencia de esas listas (que ya tienen el objeto completo en memoria), el listado de
+    // leads solo trae la versión "lite" de los campos (sin validation_rules/nomenclator completo,
+    // ver LeadFieldValueResponse vs LeadFieldValueDetailedResponse en el backend) -- por eso NO se
+    // pasa directo el Lead de la fila/tarjeta clickeada, sino que se pide el LeadDetailed completo
+    // (mismo pedido que hace la página de detalle completo) antes de mostrar el sidebar con datos
+    // editables.
+    const { sidebarMode: leadSidebarMode, selectedEntity: selectedLead, handleSidebar: handleLeadSidebar, closeSidebar: closeLeadSidebar } =
+        useSidebar<LeadDetailed>("id", params, setParams, getLead, "DETAILS_LEAD")
+    const [leadSidebarLoading, setLeadSidebarLoading] = useState(false)
+
+    // Al abrir el sidebar de un lead se ocultan el menú global y el panel de filtros, para dejarle
+    // lugar (pedido del usuario). Se guarda cómo estaban ANTES de abrir (solo la primera vez, no
+    // en cada cambio de lead con el sidebar ya abierto) para restaurarlos al cerrar.
+    const { open: menuOpen, setOpen: setMenuOpen } = useLayoutSidebar()
+    const prevUiStateRef = useRef<{ menuOpen: boolean, filtersOpen: boolean } | null>(null)
+
+    const closeLeadSidebarAndRestore = useCallback(() => {
+        closeLeadSidebar()
+        if (prevUiStateRef.current) {
+            setMenuOpen(prevUiStateRef.current.menuOpen)
+            setSidebarOpen(prevUiStateRef.current.filtersOpen)
+            prevUiStateRef.current = null
+        }
+    }, [closeLeadSidebar, setMenuOpen])
+
+    const handleLeadClick = useCallback((id: string) => {
+        // Pedido del usuario: clickear de nuevo la fila/card del lead que ya está abierto lo
+        // cierra (toggle), en vez de re-pedirlo de nuevo al backend sin necesidad.
+        if (leadSidebarMode && selectedLead?.id === id) {
+            closeLeadSidebarAndRestore()
+            return
+        }
+        // Bug real encontrado 2026-08-13 (reportado por el usuario -- "no veo que se guarde la
+        // posición del scroll"): acá se vaciaba selectedEntity a null en CADA clic (no solo al
+        // abrir por primera vez), así que al cambiar de lead con el sidebar ya abierto el
+        // contenido se achicaba de golpe al spinner -- el navegador clampea el scroll cuando el
+        // contenedor se achica, y el onScroll de LeadDetailsSidebar guardaba esa posición ya
+        // recortada, pisando la que se quería preservar. Ahora solo se resetea a null (mostrando
+        // el spinner) la PRIMERA vez que se abre; en cambios de lead subsiguientes se deja el lead
+        // anterior visible mientras carga el siguiente (LeadDetailsSidebar ya soporta esto -- ver
+        // su render, no exige !loading para mostrar LeadInfo si ya hay un lead cargado).
+        if (!leadSidebarMode) {
+            prevUiStateRef.current = { menuOpen, filtersOpen: sidebarOpen }
+            // Menú global: siempre se oculta al abrir el panel del lead.
+            setMenuOpen(false)
+            // Filtros: solo se ocultan si la pantalla es angosta -- en pantallas grandes entran
+            // los tres (menú icon-rail, filtros, panel del lead) sin ahogar la tabla (ver
+            // hasRoomForBoth / handleFiltersToggle, comportamiento recíproco).
+            if (!hasRoomForBoth) setSidebarOpen(false)
+            handleLeadSidebar("DETAILS_LEAD", null)
+        }
+        setLeadSidebarLoading(true)
+        getLead(id)
+            .then(lead => handleLeadSidebar("KEEP", lead))
+            .catch(e => { showCommonErrorToast(e); closeLeadSidebarAndRestore() })
+            .finally(() => setLeadSidebarLoading(false))
+
+    }, [leadSidebarMode, selectedLead, closeLeadSidebarAndRestore, handleLeadSidebar, menuOpen, sidebarOpen, setMenuOpen, hasRoomForBoth])
+
+    // Recíproco de lo de arriba: si el usuario abre filtros a mano mientras el panel del lead está
+    // abierto y la pantalla es angosta (no entran los dos + la tabla), se cierra el panel del lead
+    // para hacerle lugar. En pantallas grandes (hasRoomForBoth) es un toggle común y corriente.
+    const handleFiltersToggle = useCallback(() => {
+        const opening = !sidebarOpen
+        if (opening && !hasRoomForBoth && leadSidebarMode) {
+            closeLeadSidebar()
+            if (prevUiStateRef.current) {
+                setMenuOpen(prevUiStateRef.current.menuOpen)
+                prevUiStateRef.current = null
+            }
+        }
+        setSidebarOpen(opening)
+    }, [sidebarOpen, hasRoomForBoth, leadSidebarMode, closeLeadSidebar, setMenuOpen])
+
+    // Pedido del usuario: con el panel del lead Y el de filtros abiertos a la vez (único caso en
+    // que ambos conviven, ver hasRoomForBoth), el topbar (buscador + Importar/Exportar/Nuevo Lead)
+    // se queda sin espacio. Cuando pasa esto, el buscador se oculta directamente y las 3 acciones
+    // se condensan en un botón de "tres puntos" (mismo ícono/menú que usa el detalle del lead,
+    // ver LeadDetails.tsx -- ListActionMenu).
+    const topbarCramped = Boolean(leadSidebarMode) && sidebarOpen
+    const [topbarActionsAnchor, setTopbarActionsAnchor] = useState<HTMLElement | null>(null)
+    const topbarActions: ListItemAction[] = [
+        { actionType: "IMPORT", label: "Importar Leads", onClick: handleImport },
+        ...(areThereLeads ? [{
+            actionType: "DOWNLOAD", label: "Exportar Leads", onClick: exportLoad,
+        } as ListItemAction] : []),
+        ...(areThereLeads ? [{
+            actionType: "CREATE", label: "Nuevo Lead", permission: "lead:create",
+            component: RouterLink, to: `/leads/new?workspace=${workspaceId}&campaign=${campaignId}`,
+        } as ListItemAction] : []),
+    ]
 
     return (
         <Box sx={{
@@ -312,6 +450,7 @@ export const LeadListPage = () => {
                         setFiltersAndHeaders={setFiltersAndHeaders}
                         presentationProps={presentationProps}
                         viewUpdateProps={viewUpdateProps}
+                        modalProps={modalProps}
                         onToggle={() => setSidebarOpen(false)}
                         formResetKey={viewLoadKey}
                     />
@@ -333,9 +472,12 @@ export const LeadListPage = () => {
                 }}>
                     {/* Toggle sidebar */}
                     <ChipTooltip title={sidebarOpen ? 'Ocultar panel' : 'Mostrar panel'} placement="bottom" size="small">
-                        <CommonIconButton size="small" onClick={() => setSidebarOpen(prev => !prev)}
-                            sx={{ color: 'text.secondary', flexShrink: 0 }} noTooltip
-                            actionType={sidebarOpen ? "CLOSE_MENU" : "MENU"} />
+                        <IconButton size="small" onClick={() => setSidebarOpen(prev => !prev)}
+                            sx={{ color: 'text.secondary', flexShrink: 0 }}>
+                            {sidebarOpen
+                                ? <MenuOpenIcon fontSize="small" />
+                                : <MenuIcon fontSize="small" />}
+                        </IconButton>
                     </ChipTooltip>
 
                     {/* Breadcrumb: Workspace / Campaña */}
@@ -343,30 +485,36 @@ export const LeadListPage = () => {
 
                     <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
 
-                    {/* Búsqueda centrada */}
-                    <TextField
-                        size="small"
-                        placeholder="Buscar por nombre, email, teléfono..."
-                        value={searchText}
-                        onChange={e => handleSearchChange(e.target.value)}
-                        slotProps={{
-                            input: {
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <CommonIconButton size="small" edge="start"
-                                            sx={{ p: 0.25, color: "text.secondary" }} actionType='DETAILS' />
-                                    </InputAdornment>
-                                ),
-                                endAdornment: searchText ? (
-                                    <InputAdornment position="end">
-                                        <CommonIconButton size="small" onClick={handleSearchClear} edge="end"
-                                            sx={{ p: 0.25 }} actionType='CLOSE' />
-                                    </InputAdornment>
-                                ) : null
-                            }
-                        }}
-                        sx={{ flex: 1, maxWidth: 380 }}
-                    />
+                    {/* Búsqueda centrada -- se oculta directamente cuando no hay espacio (filtros +
+                        panel del lead abiertos a la vez), en vez de aplastarse. */}
+                    {!topbarCramped &&
+                        <TextField
+                            size="small"
+                            placeholder="Buscar por nombre, email, teléfono..."
+                            value={searchText}
+                            onChange={e => handleSearchChange(e.target.value)}
+                            slotProps={{
+                                input: {
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <CommonIconButton size="small" edge="start"
+                                                sx={{ p: 0.25, color: "text.secondary" }} actionType='DETAILS' />
+                                        </InputAdornment>
+                                    ),
+                                    endAdornment: searchText ? (
+                                        <InputAdornment position="end">
+                                            <IconButton size="small" onClick={handleSearchClear} edge="end"
+                                                sx={{ p: 0.25 }}>
+                                                <CommonIconButton size="small" onClick={handleSearchClear} edge="end"
+                                                    sx={{ p: 0.25 }} actionType='CLOSE' />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ) : null
+                                }
+                            }}
+                            sx={{ flex: 1, maxWidth: 380 }}
+                        />
+                    }
 
                     {/* Acciones contextuales - derecha */}
                     <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -387,6 +535,18 @@ export const LeadListPage = () => {
                                     Eliminar
                                 </CommonButton>
                             </>
+                        ) : topbarCramped ? (
+                            // Sin espacio (filtros + panel del lead abiertos a la vez): las 3
+                            // acciones se condensan en un botón de "tres puntos" -- mismo ícono y
+                            // menú (ListActionMenu) que ya usa el detalle del lead.
+                            <>
+                                <IconButton size="small" onClick={e => setTopbarActionsAnchor(e.currentTarget)}
+                                    sx={{ color: 'text.secondary' }}>
+                                    <MoreVertIcon fontSize="small" />
+                                </IconButton>
+                                <ListActionMenu actions={topbarActions} anchorEl={topbarActionsAnchor}
+                                    closeMenu={() => setTopbarActionsAnchor(null)} />
+                            </>
                         ) : (
                             <>
                                 <ChipTooltip title="Importar Leads" size="small" placement='bottom'>
@@ -398,14 +558,6 @@ export const LeadListPage = () => {
                                     <ChipTooltip title="Exportar Leads" size="small" placement='bottom'>
                                         <CommonIconButton size="small" onClick={exportLoad} disabled={exporting}
                                             actionType='DOWNLOAD' sx={{ color: "text.secondary" }}>
-                                        </CommonIconButton>
-                                    </ChipTooltip>
-                                )}
-                                {areThereLeads && !!campaignId && presentationMode === "TABLE" && (
-                                    <ChipTooltip title="Campos a Mostrar" size="small" placement='bottom'>
-                                        <CommonIconButton size="small" actionType='LIST' noTooltip
-                                            onClick={() => modalProps.handleOpen('columns_selector')}
-                                            sx={{ color: "text.secondary" }}>
                                         </CommonIconButton>
                                     </ChipTooltip>
                                 )}
@@ -439,6 +591,7 @@ export const LeadListPage = () => {
                                     leads={leads.items}
                                     leadFields={leadFields}
                                     selectedFieldIds={selectedFieldIds}
+                                    cardFields={cardFields}
                                     modalProps={modalProps}
                                     presentationMode={presentationMode}
                                     activeFilters={filters.length}
@@ -450,6 +603,7 @@ export const LeadListPage = () => {
                                     filters={filters}
                                     searchQuery={debouncedQuery}
                                     onClearFilters={() => setFiltersAndHeaders([], fetchParams)}
+                                    onLeadClick={handleLeadClick}
                                 />
                                 {presentationMode === 'TABLE' && (
                                     <Box sx={{ mt: 1 }}>
@@ -496,6 +650,28 @@ export const LeadListPage = () => {
                     getGroupName={getFieldSelectorGroupName}
                 />
             </GenericModal>
+            <GenericModal
+                idModal="card_fields_selector"
+                {...modalProps}
+                buttonText="Elementos de la Tarjeta"
+                maxWidth="sm"
+                fullWidth
+                showButton={false}
+            >
+                <LeadBoardCardFieldsSelector
+                    cardFields={cardFields}
+                    handleCardFields={handleCardFields}
+                    handleClose={modalProps.handleClose}
+                />
+            </GenericModal>
+
+            <LeadDetailsSidebar
+                isOpen={Boolean(leadSidebarMode)}
+                lead={selectedLead}
+                loading={leadSidebarLoading}
+                onClose={closeLeadSidebarAndRestore}
+                onUpdate={(lead) => handleLeadSidebar("KEEP", lead)}
+            />
         </Box>
     )
 }

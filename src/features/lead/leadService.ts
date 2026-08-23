@@ -87,8 +87,13 @@ export const deleteView = async (id: string): Promise<DeleteResponse> => {
   return view.data;
 };
 
-export const exportLeads = async (campaignId: string): Promise<void> => {
-  const response = await axiosCRM.get(`export/${campaignId}`, {
+// Bug real encontrado 2026-08-11 (reportado por el usuario -- "al exportar el excel no aplica los
+// filtros"): antes este endpoint era GET sin body, así que siempre exportaba TODOS los leads de
+// la campaña sin importar los filtros/búsqueda aplicados en el listado. Ahora es POST y manda los
+// mismos filtros que ya usa getFilteredLeads (/leads/search), más el texto libre buscado.
+export const exportLeads = async (campaignId: string, filters: LeadFilter[] = [], query?: string): Promise<void> => {
+  const response = await axiosCRM.post(`export/${campaignId}`, { filters }, {
+    params: { query },
     responseType: 'blob', // Crucial para archivos
   });
 

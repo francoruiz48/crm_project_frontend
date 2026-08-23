@@ -59,7 +59,11 @@ export interface Lead extends Metadata {
   // en las dos interfaces base.
   creator?: Creator | null;
   updater?: Updater | null;
-  //Solo viene poblado cuando este Lead aparece como "lead relacionado" (campo tipo LEAD) dentro de OTRO lead, 
+  // El backend (LeadResponse) siempre lo manda, pero no estaba declarado acá -- getUpdatedLead
+  // (LeadPartialUpdate.tsx) lo necesita para actualizar "Modificado por" en tiempo real tras
+  // editar un campo custom, sin esperar a un refresh de página.
+  updated_at?: string;
+  //Solo viene poblado cuando este Lead aparece como "lead relacionado" (campo tipo LEAD) dentro de OTRO lead,
   // y el usuario actual no tiene acceso a su campaña.
   restricted?: boolean;
 }
@@ -136,6 +140,11 @@ export interface LeadViewPost {
   ui_config?: {
     selected_ids?: string[],
     fetch_params?: ListParams,
+    // Elementos togglables de la tarjeta del tablero (Subtítulo/Etapa/Equipo/Asignado a) --
+    // ver BoardCardFieldCode en features/lead/boardCardFields.ts. Tipado como string[] genérico
+    // acá (en vez de importar BoardCardFieldCode) para no crear una dependencia de types/ hacia
+    // features/.
+    card_fields?: string[],
     [item: string]: unknown
   },
   sort_config?: {
@@ -154,6 +163,11 @@ export interface LeadViewParams {
   ui_config?: {
     selected_ids?: string[],
     fetch_params?: ListParams,
+    // Elementos togglables de la tarjeta del tablero (Subtítulo/Etapa/Equipo/Asignado a) --
+    // ver BoardCardFieldCode en features/lead/boardCardFields.ts. Tipado como string[] genérico
+    // acá (en vez de importar BoardCardFieldCode) para no crear una dependencia de types/ hacia
+    // features/.
+    card_fields?: string[],
     [item: string]: unknown
   },
   sort_config?: {

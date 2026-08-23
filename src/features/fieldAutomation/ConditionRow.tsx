@@ -7,6 +7,7 @@ import type { LeadField } from '../../types/leadFields';
 import type { RuleCondition } from '../../types/automation';
 import type { NomenclatorItem } from '../../types/nomenclators';
 import type { NativeFieldOptions } from 'src/features/lead/nativeLeadFields';
+import type { AutomationCompatibility } from 'src/types/shared';
 import { FieldSelector } from 'src/components/ui/forms/FieldSelector';
 
 interface ConditionRowProps {
@@ -16,8 +17,21 @@ interface ConditionRowProps {
   isOnly: boolean;
   fields: LeadField[];
   nativeOptions?: NativeFieldOptions;
+  compatibilityMatrix?: AutomationCompatibility;
   readOnly?: boolean;
 }
+
+// CHECKBOX/NATIVE_ID no tienen entrada propia en AUTOMATION_COMPATIBILITY_MATRIX (backend,
+// app/core/dictionaries.py) -- se comportan igual que SELECTOR (un valor de una lista fija de
+// opciones). CALCULATED tampoco tiene entrada propia -- son campos numéricos derivados, se
+// tratan como NUMBER. BOOLEAN es un alias legado de BOOL que en la práctica no se usa, pero se
+// mapea por las dudas.
+const MATRIX_TYPE_ALIAS: Record<string, string> = {
+  CHECKBOX: 'SELECTOR',
+  NATIVE_ID: 'SELECTOR',
+  CALCULATED: 'NUMBER',
+  BOOLEAN: 'BOOL',
+};
 
 // Devuelve las opciones reales {id, label} de un campo nativo tipo NATIVE_ID según su nativeKey
 // (mismo criterio que LeadFilters.tsx en la lista de leads).
@@ -37,9 +51,14 @@ const getNativeIdOptions = (nativeKey: string | undefined, nativeOptions?: Nativ
   }
 };
 
+// IS_PAST/IS_FUTURE tampoco necesitan valor: comparan el campo contra "ahora" (ver
+// AutomationEngine._evaluate_condition en el backend, que ni siquiera lee condition.value
+// para estos dos operadores).
 const NO_VALUE_OPERATORS: ConditionOperatorEnum[] = [
   ConditionOperatorEnum.IS_EMPTY,
   ConditionOperatorEnum.IS_NOT_EMPTY,
+  ConditionOperatorEnum.IS_PAST,
+  ConditionOperatorEnum.IS_FUTURE,
 ];
 
 export const ConditionRow: React.FC<ConditionRowProps> = ({
@@ -49,6 +68,7 @@ export const ConditionRow: React.FC<ConditionRowProps> = ({
   isOnly,
   fields,
   nativeOptions,
+  compatibilityMatrix = {},
   readOnly = false,
 }) => {
   // 1. FILTRAMOS CAMPOS INVÁLIDOS PARA CONDICIONES (Incluyendo LEAD)
@@ -95,18 +115,20 @@ export const ConditionRow: React.FC<ConditionRowProps> = ({
     fetchOptions();
   }, [selectedField?.id, selectedField?.nomenclator_id, selectedField?.field_type?.code]);
 
-  const getAvailableOperators = (field: LeadField | undefined): ConditionOperatorEnum[] => {
-    if (!field) return [ConditionOperatorEnum.EQUALS];
-
+  // Fallback usado solo si la matrix todavía no cargó (primer render) o no tiene entrada para
+  // el tipo -- mismo listado, más chico, que había antes de sumar la matrix. Cuando la matrix
+  // sí tiene el tipo, ES la fuente de verdad (evita que este listado se desactualice respecto
+  // al backend de nuevo, como pasó con STARTS_WITH/ENDS_WITH/IS_PAST/IS_FUTURE -- ver
+  // hallazgo 2026-08-15).
+  const getFallbackOperators = (field: LeadField): ConditionOperatorEnum[] => {
     switch (field.field_type.code) {
-      case 'NUMBER': case 'INT': case 'MONEY': case 'CALCULATED': case 'DATE': case 'DATE_TIME':
+      case 'NUMBER': case 'INT': case 'CALCULATED': case 'DATE': case 'DATE_TIME':
         return [
           ConditionOperatorEnum.EQUALS, ConditionOperatorEnum.NOT_EQUALS,
           ConditionOperatorEnum.GREATER_THAN, ConditionOperatorEnum.LESS_THAN,
           ConditionOperatorEnum.IS_EMPTY, ConditionOperatorEnum.IS_NOT_EMPTY,
         ];
-      case 'BOOL':
-      case 'BOOLEAN':
+      case 'BOOL': case 'BOOLEAN':
         return [
           ConditionOperatorEnum.EQUALS, ConditionOperatorEnum.NOT_EQUALS,
           ConditionOperatorEnum.IS_EMPTY, ConditionOperatorEnum.IS_NOT_EMPTY,
@@ -123,6 +145,21 @@ export const ConditionRow: React.FC<ConditionRowProps> = ({
           ConditionOperatorEnum.IS_EMPTY, ConditionOperatorEnum.IS_NOT_EMPTY,
         ];
     }
+  };
+
+  const getAvailableOperators = (field: LeadField | undefined): ConditionOperatorEnum[] => {
+    if (!field) return [ConditionOperatorEnum.EQUALS];
+
+    const matrixKey = MATRIX_TYPE_ALIAS[field.field_type.code] ?? field.field_type.code;
+    const fromMatrix = compatibilityMatrix[matrixKey]?.operators;
+    if (fromMatrix && fromMatrix.length > 0) {
+      // Filtro defensivo: si el backend algún día agrega un operador nuevo a la matrix antes
+      // de que el frontend sepa mostrarlo (sin label/UI), no lo ofrecemos en el selector en
+      // vez de romper -- mismo criterio que llevó a este arreglo.
+      const known = fromMatrix.filter((op): op is ConditionOperatorEnum => op in ConditionOperatorEnum);
+      if (known.length > 0) return known;
+    }
+    return getFallbackOperators(field);
   };
 
   const renderValueInput = () => {
@@ -285,7 +322,13 @@ export const ConditionRow: React.FC<ConditionRowProps> = ({
           value={condition.field_id ?? null}
           onChange={(fieldId) => onUpdate({
             ...condition,
-            field_id: fieldId ? `${fieldId}` : null,
+            // Bug real encontrado 2026-08-15: acá se forzaba fieldId a string (`${fieldId}`)
+            // siempre, pero los campos nativos (Usuario Creador, Equipo, Etapa, etc.) tienen
+            // id numérico negativo -- forzarlo a string rompía el `f.id === condition.field_id`
+            // de selectedField (arriba), así que cualquier condición sobre un campo nativo
+            // perdía su operador/input correcto (caía al fallback genérico). FieldSelector ya
+            // entrega el id con su tipo real (string uuid o number nativo, ver FieldSelector.tsx).
+            field_id: fieldId ?? null,
             value: null,
             operator: getAvailableOperators(allowedFields.find(f => f.id === fieldId))[0]
           })}

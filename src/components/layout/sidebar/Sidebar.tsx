@@ -1,4 +1,4 @@
-import React, { type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Box, Divider, IconButton, Stack } from "@mui/material";
 import { styled, useTheme, type CSSObject, type Theme } from "@mui/material/styles";
 import MuiDrawer from '@mui/material/Drawer';
@@ -6,6 +6,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import Header from "./Header";
 import Navbar from "./Navbar";
+import { useLayoutSidebar } from "src/stores/LayoutSidebarContext";
 
 export const drawerWidth = "15"; //rem
 
@@ -89,7 +90,10 @@ interface SidebarProps {
 
 export default function LayoutSidebar({ children }: SidebarProps) {
     const theme = useTheme();
-    const [open, setOpen] = React.useState(false);
+    // Antes era useState local -- ahora vive en Context (ver LayoutSidebarContext.tsx) para que
+    // otras pantallas (ej. LeadDetailsSidebar) puedan ocultar el menú global cuando necesitan el
+    // espacio.
+    const { open, setOpen } = useLayoutSidebar();
 
     const handleDrawerOpen = () => {
         setOpen(true);

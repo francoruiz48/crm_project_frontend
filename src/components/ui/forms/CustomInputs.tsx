@@ -90,14 +90,33 @@ export const ControlledSlider = <T extends FieldValues>
               <Grid size="grow" sx={{ alignItems: "center", minWidth: "7rem", maxWidth: "20rem" }}>
                 {type === "slider" && (
                   <Box>
-                    <Slider {...field}
+                    {/* Bug real encontrado 2026-08-11: {...field} le pasaba a Slider el onChange
+                        de react-hook-form directo. MUI llama onChange(event, value) y RHF ignora
+                        el segundo argumento, leyendo en cambio event.target.value del input nativo
+                        -- que no siempre coincide con el valor real que Slider calculó/mostró. Se
+                        cablea explícito como ya hace NumberSpinner acá abajo. */}
+                    <Slider {...field} onChange={(_, value) => field.onChange(value)}
                       value={Number(field.value) || Number(defaultValue)} size="medium"
                       color="secondary" min={min} max={max} step={step}
                     />
                   </Box>
                 )}
                 {type === "rating" && (
+                  // Bug real encontrado 2026-08-11 (reportado por Franco: clic en una estrella no
+                  // guardaba el valor nuevo). El fix anterior (pasar el 2do argumento de onChange,
+                  // igual que Slider) NO alcanza para Rating: en su handleChange interno, MUI le da
+                  // prioridad al mouse sobre el radio clickeado ("Give mouse priority over
+                  // keyboard", ver Rating.js) y sobreescribe el valor real por uno calculado a
+                  // partir de la posición X del cursor contra getBoundingClientRect() del
+                  // contenedor. Confirmado con un test aislado (React Testing Library + MUI Rating
+                  // real): clickeando el radio de valor "3" con precision={.5}, ese 2do argumento
+                  // llegó a ser 0.5 (equivocado) mientras que event.target.value (el radio
+                  // realmente clickeado) fue "3" (correcto) -- por eso el fix correcto es ignorar
+                  // el 2do argumento de onChange y leer directo del evento nativo, como abajo.
                   <Rating {...field}
+                    onChange={(event) => field.onChange(
+                      event.target.value === "" ? null : Number(event.target.value)
+                    )}
                     value={Number(field.value) || Number(defaultValue)}
                     max={max} precision={step} size="medium" sx={{ pl: 1 }}
                   />

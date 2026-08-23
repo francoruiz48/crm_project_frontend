@@ -9,6 +9,7 @@ import type { RuleGroup, RuleCondition } from '../../types/automation';
 import { ConditionRow } from './ConditionRow';
 import type { LeadField } from '../../types/leadFields';
 import type { NativeFieldOptions } from 'src/features/lead/nativeLeadFields';
+import type { AutomationCompatibility } from 'src/types/shared';
 
 interface ConditionBuilderProps {
   group: RuleGroup;
@@ -18,6 +19,7 @@ interface ConditionBuilderProps {
   isRoot?: boolean;
   fields?: LeadField[];
   nativeOptions?: NativeFieldOptions;
+  compatibilityMatrix?: AutomationCompatibility;
   readOnly?: boolean;
 }
 
@@ -46,6 +48,7 @@ export const ConditionBuilder = memo(({
   isRoot = false,
   fields = [],
   nativeOptions,
+  compatibilityMatrix,
   readOnly = false,
 }: ConditionBuilderProps) => {
   const handleOperatorChange = (
@@ -168,6 +171,7 @@ export const ConditionBuilder = memo(({
                   isOnly={group.rules.length === 1 && isRoot}
                   fields={fields}
                   nativeOptions={nativeOptions}
+                  compatibilityMatrix={compatibilityMatrix}
                   readOnly={readOnly}
                 />
               ) : (
@@ -178,6 +182,7 @@ export const ConditionBuilder = memo(({
                   depth={depth + 1}
                   fields={fields}
                   nativeOptions={nativeOptions}
+                  compatibilityMatrix={compatibilityMatrix}
                   readOnly={readOnly}
                 />
               )}

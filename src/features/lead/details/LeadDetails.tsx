@@ -6,6 +6,7 @@ import { DisableConfirmDialog } from "src/components/ui/feedback/ConfirmationDia
 import LoadingScreenWrapper from "src/components/ui/feedback/LoadingScreen.tsx"
 import GenericPaper from "shared/layout/container/GenericPaper"
 import { ListActionMenu, type ListItemAction } from "shared/ui/lists/CustomListItem"
+import ReferenceChip from "shared/ui/details/ReferenceChip"
 import { useLoading } from "src/hooks/useLoading.ts"
 import type { Lead, LeadDetailed, LeadTeam } from "src/types/leads.ts"
 import type { Campaign } from "src/types/campaigns.ts"
@@ -247,13 +248,13 @@ interface LeadInfoProps {
     leadSubtitle?: (string | undefined)[] | null,
     updateLeadInfo: (lead: LeadDetailed, reloadAudits?: boolean) => void
     onOpenTitleConfig?: () => void
+    //Usado desde el sidebar de detalle rápido (LeadDetailsSidebar): ahí las secciones de campos
+    //deben mostrarse siempre desplegadas y no poder plegarse. En el detalle de página completa
+    //queda sin usar, así que el acordeón se comporta igual que siempre.
+    forceExpandSections?: boolean
 }
 
-//Mismo estilo que SECTION_LABEL_SX de LeadDetailsState.tsx (Estado/Etapa) y LeadTagsMenu.tsx
-//(Etiquetas), para que el título "ID" quede visualmente igual a esos otros títulos de sección.
-const ID_LABEL_SX = { fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: ".04em" }
-
-export const LeadInfo = ({ lead, leadTitle, leadSubtitle, handleActive, updateLeadInfo, onOpenTitleConfig }: LeadInfoProps) => {
+export const LeadInfo = ({ lead, leadTitle, leadSubtitle, handleActive, updateLeadInfo, onOpenTitleConfig, forceExpandSections }: LeadInfoProps) => {
 
     const titleText = (leadTitle && leadTitle?.length > 0) ? leadTitle?.join(" ") : "Título no encontrado"
     const subtitleText = (leadSubtitle && leadSubtitle.length > 0) ? leadSubtitle.join(" ") : null
@@ -317,17 +318,10 @@ export const LeadInfo = ({ lead, leadTitle, leadSubtitle, handleActive, updateLe
 
 
                     {lead.reference &&
-                        <Stack direction="row" spacing={1.25} sx={{ alignItems: "center" }}>
-                            <Typography variant="caption" color="text.secondary" sx={ID_LABEL_SX}>
-                                ID
-                            </Typography>
-                            <Typography variant="caption" color="text.primary" sx={{ fontWeight: 600 }}>
-                                {lead.reference}
-                            </Typography>
-                        </Stack>}
+                        <ReferenceChip reference={lead.reference} />}
                 </Stack>
             </GenericPaper>
-            <LeadFieldSections lead={lead} updateLeadInfo={updateLeadInfo} />
+            <LeadFieldSections lead={lead} updateLeadInfo={updateLeadInfo} forceExpanded={forceExpandSections} />
         </Stack>
     )
 }
@@ -404,14 +398,22 @@ const LeadMetaInfo = ({ lead, updateLeadInfo }: { lead: LeadDetailed, updateLead
 
     const [assigning, setAssigning] = useState(false)
 
-    const handleAssign = useCallback((body: Omit<BulkAssignRequest, "lead_ids">, merge: (updated: Lead) => Partial<LeadDetailed>) => {
+    const handleAssign = useCallback((body: Omit<BulkAssignRequest, "lead_ids">, merge: (updated: Lead) => Partial<LeadDetailed>, successMsg: string) => {
         setAssigning(true)
         bulkAssignLeads({ lead_ids: [lead.id], ...body })
             .then(res => {
                 const updated = res[0]
                 //El timeline del lead registra un evento LEAD_REASSIGNED (ver lead_service.bulk_assign),
                 //así que recargamos la pestaña de Auditoría igual que al cambiar etapa/estado.
-                if (updated) updateLeadInfo({ ...lead, ...merge(updated) }, true)
+                //Bug real encontrado 2026-08-11: merge(updated) solo copiaba los campos puntuales
+                //(assigned_to_user_id/team_id), descartando updated_at/updater de la respuesta --
+                //"Modificado por" se quedaba con el valor viejo hasta refrescar la página (mismo
+                //patrón ya arreglado en getUpdatedLead para la edición de campos custom). Tampoco
+                //había ningún toast de éxito acá, a diferencia del resto de las ediciones del detalle.
+                if (updated) {
+                    updateLeadInfo({ ...lead, ...merge(updated), updated_at: updated.updated_at, updater: updated.updater }, true)
+                    showToast(successMsg)
+                }
             })
             .catch(e => showCommonErrorToast(e))
             .finally(() => setAssigning(false))
@@ -422,6 +424,7 @@ const LeadMetaInfo = ({ lead, updateLeadInfo }: { lead: LeadDetailed, updateLead
         handleAssign(
             option.id === null ? { clear_user: true } : { target_user_id: option.id },
             updated => ({ assigned_to_user_id: updated.assigned_to_user_id, assigned_to_user: updated.assigned_to_user }),
+            "Usuario asignado actualizado con éxito.",
         )
     }
 
@@ -430,6 +433,7 @@ const LeadMetaInfo = ({ lead, updateLeadInfo }: { lead: LeadDetailed, updateLead
         handleAssign(
             option.id === null ? { clear_team: true } : { target_team_id: option.id },
             updated => ({ team_id: updated.team_id, team: updated.team }),
+            "Equipo asignado actualizado con éxito.",
         )
     }
 

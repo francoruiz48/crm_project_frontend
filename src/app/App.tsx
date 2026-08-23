@@ -6,7 +6,6 @@ import { router } from 'src/routing/routes';
 
 function App() {
   const { mode } = useColorScheme();
-
   return (
     <UserProvider>
       <RouterProvider router={router} />

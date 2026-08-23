@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react"
 import {
-    Box, Chip, CircularProgress, InputAdornment, Paper, Stack,
+    Box, CircularProgress, InputAdornment, Paper, Stack,
     Table, TableBody, TableCell, TableHead, TableRow,
-    TextField, Typography, useTheme,
+    TextField, useTheme,
 } from "@mui/material"
 import { BusinessOutlined, GroupOutlined, LeaderboardOutlined, SearchOutlined } from "@mui/icons-material"
 import { getAdminDashboard, type AdminDashboard } from "src/features/dashboard/dashboardServices"
 import { showCommonErrorToast } from "src/utils/feedback"
 import { UserAvatar } from "src/components/ui/details/UserAvatar"
+import { CommonCRMText, CommonCRMTitle } from "src/components/ui/details/CommonText"
+import StatCard from "src/components/ui/details/StatCard"
+import CustomChip from "src/components/ui/details/CustomChip"
 
 // ── Header card ───────────────────────────────────────────────────────────────
 function DashboardHeader() {
@@ -28,25 +31,10 @@ function DashboardHeader() {
                     <BusinessOutlined sx={{ fontSize: 32 }} />
                 </Box>
                 <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1 }}>Panel Global</Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.8, mt: 0.3 }}>
+                    <CommonCRMTitle titleLevel="h3" font="display">Panel Global</CommonCRMTitle>
+                    <CommonCRMText variant="body2" color="textSecondary">
                         Vista de administración del sistema
-                    </Typography>
-                </Box>
-            </Stack>
-        </Paper>
-    )
-}
-
-// ── Stat card ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: string }) {
-    return (
-        <Paper variant="outlined" sx={{ flex: 1, p: 2.5, borderRadius: 2, borderLeft: `4px solid ${color}` }}>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-                <Box sx={{ color, bgcolor: `${color}18`, borderRadius: 1.5, p: 1, display: "flex" }}>{icon}</Box>
-                <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1 }}>{value}</Typography>
-                    <Typography variant="caption" color="text.secondary">{label}</Typography>
+                    </CommonCRMText>
                 </Box>
             </Stack>
         </Paper>
@@ -55,12 +43,14 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
 
 // ── Activity chip ─────────────────────────────────────────────────────────────
 function LastActivityChip({ date }: { date: string | null }) {
-    if (!date) return <Chip label="Sin actividad" size="small" variant="outlined" sx={{ fontSize: 11 }} />
-    const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000)
-    if (days === 0) return <Chip label="Hoy" size="small" color="success" sx={{ fontSize: 11 }} />
-    if (days <= 7) return <Chip label={`Hace ${days}d`} size="small" color="primary" variant="outlined" sx={{ fontSize: 11 }} />
-    if (days <= 30) return <Chip label={`Hace ${days}d`} size="small" color="warning" variant="outlined" sx={{ fontSize: 11 }} />
-    return <Chip label={`Hace ${days}d`} size="small" color="error" variant="outlined" sx={{ fontSize: 11 }} />
+    // Snapshot de "ahora" tomado una sola vez: evita llamar a Date.now() durante el render
+    const [now] = useState(() => Date.now())
+    if (!date) return <CustomChip label="Sin actividad" size="small" variant="outlined" sx={{ fontSize: 11 }} />
+    const days = Math.floor((now - new Date(date).getTime()) / 86400000)
+    if (days === 0) return <CustomChip label="Hoy" size="small" chipColor="success" sx={{ fontSize: 11 }} />
+    if (days <= 7) return <CustomChip label={`Hace ${days}d`} size="small" chipColor="primary" variant="outlined" sx={{ fontSize: 11 }} />
+    if (days <= 30) return <CustomChip label={`Hace ${days}d`} size="small" chipColor="warning" variant="outlined" sx={{ fontSize: 11 }} />
+    return <CustomChip label={`Hace ${days}d`} size="small" chipColor="error" variant="outlined" sx={{ fontSize: 11 }} />
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -112,12 +102,12 @@ export function GlobalDashboardPage() {
                 <Box sx={{ px: 4, pt: 4, pb: 3, borderBottom: `1px solid ${palette.divider}` }}>
                     <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 3 }}>
                         <Box>
-                            <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+                            <CommonCRMTitle titleLevel="h2" sx={{ lineHeight: 1.1 }}>
                                 Organizaciones
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.8 }}>
+                            </CommonCRMTitle>
+                            <CommonCRMText variant="body2" color="text.secondary" sx={{ mt: 0.8 }}>
                                 {filtered.length} de {data.orgs.length} registradas
-                            </Typography>
+                            </CommonCRMText>
                         </Box>
                         <TextField
                             size="small"
@@ -161,11 +151,11 @@ export function GlobalDashboardPage() {
                                                 bgcolor: `${palette.primary.main}18`,
                                                 display: "flex", alignItems: "center", justifyContent: "center",
                                             }}>
-                                                <Typography variant="caption" sx={{ fontWeight: 700, color: palette.primary.main }}>
+                                                <CommonCRMText variant="caption" sx={{ color: palette.primary.main }}>
                                                     {org.org_name.charAt(0).toUpperCase()}
-                                                </Typography>
+                                                </CommonCRMText>
                                             </Box>
-                                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{org.org_name}</Typography>
+                                            <CommonCRMText variant="body2">{org.org_name}</CommonCRMText>
                                         </Stack>
                                     </TableCell>
 
@@ -174,22 +164,22 @@ export function GlobalDashboardPage() {
                                         {org.owner_name ? (
                                             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                                                 <UserAvatar name={org.owner_name} size={26} tooltip />
-                                                <Typography variant="body2" color="text.secondary">{org.owner_name}</Typography>
+                                                <CommonCRMText variant="body2" color="text.secondary">{org.owner_name}</CommonCRMText>
                                             </Stack>
                                         ) : (
-                                            <Typography variant="body2" color="text.disabled">—</Typography>
+                                            <CommonCRMText variant="body2" color="text.disabled">—</CommonCRMText>
                                         )}
                                     </TableCell>
 
                                     {/* Usuarios */}
                                     <TableCell align="right">
-                                        <Typography variant="body2">{org.total_users}</Typography>
+                                        <CommonCRMText variant="body2">{org.total_users}</CommonCRMText>
                                     </TableCell>
 
                                     {/* Leads con barra */}
                                     <TableCell align="right">
                                         <Stack spacing={0.4} sx={{ alignItems: "flex-end" }}>
-                                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{org.total_leads}</Typography>
+                                            <CommonCRMText variant="body2">{org.total_leads}</CommonCRMText>
                                             <Box sx={{ width: 64, height: 5, bgcolor: "action.hover", borderRadius: 3, overflow: "hidden" }}>
                                                 <Box sx={{
                                                     height: "100%",
@@ -212,9 +202,9 @@ export function GlobalDashboardPage() {
                         {filtered.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={5} align="center">
-                                    <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
+                                    <CommonCRMText variant="body2" color="text.secondary" sx={{ py: 3 }}>
                                         {search ? "Sin resultados para la búsqueda" : "Sin organizaciones"}
-                                    </Typography>
+                                    </CommonCRMText>
                                 </TableCell>
                             </TableRow>
                         )}

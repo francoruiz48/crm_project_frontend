@@ -1,6 +1,7 @@
 import { LoginFormPage } from "src/features/auth/LoginForm";
 import { SignupFormPage } from "src/features/auth/SignupForm";
 import { OnboardingPage } from "src/pages/OnboardingPage";
+import { PublicWebFormPage } from "src/features/webForms/PublicWebFormPage";
 import { PageTitle } from "./PageTitle";
 import { ROUTE_LIST_OUTLET_PROCESSED, type RouteListProps } from "./routeList";
 
@@ -9,6 +10,9 @@ const ROUTE_LIST_ROOT: RouteListProps[] = [
     { path: "/login", element: <LoginFormPage />, title: "Iniciar Sesión" },
     { path: "/signup", element: <SignupFormPage />, title: "Crear Cuenta" },
     { path: "/onboarding", element: <OnboardingPage />, title: "Onboarding" },
+    // Sin auth, se embebe en sitios de terceros -- por eso vive en ROUTE_LIST_ROOT (sin
+    // MainLayout/Navbar) y no en ROUTE_LIST_OUTLET como el resto del CRM.
+    { path: "/forms/:uuid", element: <PublicWebFormPage />, title: "Formulario" },
 ]
 
 /**Agrega un wrapper para usar el hook de title.

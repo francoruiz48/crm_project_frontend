@@ -5,6 +5,8 @@ import { GlobalDashboardPage } from "src/features/dashboard/GlobalDashboardPage"
 import { OrgDashboardPage } from "src/features/dashboard/OrgDashboardPage";
 import { AutomationList } from "src/features/fieldAutomation/AutomationList";
 import { AutomationPage } from "src/features/fieldAutomation/AutomationPage";
+import { WebFormList } from "src/features/webForms/WebFormList";
+import { WebFormPage } from "src/features/webForms/WebFormPage";
 import { LeadDetailsLayout } from "src/features/lead/details/LeadDetails";
 import { ImportLeadsPage } from "src/features/lead/ImportLeadsPage";
 import { CreateLeadFormPage, UpdateLeadFormPage } from "src/features/lead/leadForm/LeadFormWraper";
@@ -60,6 +62,8 @@ const ROUTE_LIST_OUTLET: RouteListProps[] = [
     { path: "/nomenclators/", title: "Nomencladores", element: <NomenclatorList />, permission: "nomenclator:view" },
     { path: "/automations/", title: "Automatizaciones", element: <AutomationList />, regularNavbar: true, icon: ROUTE_ICONS.AUTOMATIONS, permission: "field_automation:view" },
     { path: "/automations/:id", title: "Detalle de Automatización", element: <AutomationPage />, permission: "field_automation:view" },
+    { path: "/web_forms/", title: "Formularios Web", element: <WebFormList />, regularNavbar: true, icon: ROUTE_ICONS.WEB_FORMS, permission: "web_form:view" },
+    { path: "/web_forms/:id", title: "Detalle de Formulario Web", element: <WebFormPage />, permission: "web_form:view" },
     { path: "/organizations/", title: "Organizaciones", element: <OrganizationList />, regularNavbar: true, globalNavbar: true, icon: ROUTE_ICONS.ORGANIZATIONS, permission: "organization:view" },
     { path: "/org-properties/", title: "Propiedades de Organización", navTitle: "Propiedades", element: <OrgProperties />, regularNavbar: true, icon: ROUTE_ICONS.ORG_PROPERTIES, permission: LEAD_PROPERTIES.map(prop => prop.permission) },
     { path: "/lead-flow-editor/:id?", title: "Editor de Ciclo de Vida", element: <LeadFlowEditor />, permission: "lead_flow:view" },

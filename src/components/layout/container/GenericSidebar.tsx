@@ -2,7 +2,7 @@ import { type ReactNode } from "react"
 import { GenericSidebarContent, GenericSidebarHeader } from "./ColoredHeaders"
 import GenericPaper from "./GenericPaper"
 import { CommonIconButton } from "shared/ui/buttons/CommonIconButton"
-import { Drawer, Stack, useMediaQuery, useTheme, type DrawerProps, Typography, Box, styled, type StackProps } from "@mui/material"
+import { Drawer, Stack, useMediaQuery, useTheme, type DrawerProps, Typography, Box, styled, type StackProps, alpha } from "@mui/material"
 import { CustomAvatar, CustomAvatarEnabled } from "src/components/ui/details/CustomAvatar"
 
 const SidebarPaper = styled(GenericPaper)({ padding: 0 })
@@ -11,9 +11,14 @@ interface GenericSidebarProps extends DrawerProps {
     isSidebarOpen?: boolean,
     closeSidebar: () => void,
     children: ReactNode,
-    sidebarWidth?: string
+    sidebarWidth?: string,
+    // Si se pasa, el botón de cerrar deja de flotar solo y se muestra junto a estas acciones,
+    // dentro de una franja fina con fondo (para no quedar "en el aire" sobre el contenido). Si no
+    // se pasa, el cierre sigue flotando exactamente igual que antes (comportamiento sin cambios
+    // para el resto de los sidebars que ya usan este componente).
+    headerActions?: ReactNode
 }
-export const GenericSidebar = ({ isSidebarOpen = false, closeSidebar, children, sidebarWidth, ...props }: GenericSidebarProps) => {
+export const GenericSidebar = ({ isSidebarOpen = false, closeSidebar, children, sidebarWidth, headerActions, ...props }: GenericSidebarProps) => {
 
     const theme = useTheme()
 
@@ -49,8 +54,22 @@ export const GenericSidebar = ({ isSidebarOpen = false, closeSidebar, children, 
             sx={{ zIndex: 1202 }}
             {...props}
         >
-            <CommonIconButton actionType="CLOSE" title="Cerrar" onClick={closeSidebar}
-                sx={{ position: "absolute", top: "3rem", right: "2rem", transform: "translateY(-50%)" }} />
+            {headerActions ?
+                <Stack direction="row" spacing={1} sx={{
+                    position: "absolute", top: 0, left: 0, right: 0, zIndex: 1,
+                    alignItems: "center", justifyContent: "space-between",
+                    minHeight: "3.25rem", px: "1.25rem",
+                    backgroundColor: alpha(theme.palette.background.paper, 0.9),
+                    backdropFilter: "blur(6px)",
+                    borderBottom: `1px solid ${theme.palette.divider}`,
+                }}>
+                    <Stack direction="row" spacing={0.5}>{headerActions}</Stack>
+                    <CommonIconButton actionType="CLOSE" title="Cerrar" onClick={closeSidebar} />
+                </Stack>
+                :
+                <CommonIconButton actionType="CLOSE" title="Cerrar" onClick={closeSidebar}
+                    sx={{ position: "absolute", top: "3rem", right: "2rem", transform: "translateY(-50%)" }} />
+            }
             {children}
         </Drawer >
     )

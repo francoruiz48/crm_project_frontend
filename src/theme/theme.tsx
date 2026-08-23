@@ -1,6 +1,6 @@
 import { createTheme } from '@mui/material/styles';
 import { darkTheme, lightTheme } from './themePalette';
-import { textTheme } from './typographyTheme';
+import { FONT_FAMILY, textTheme } from './typographyTheme';
 import { getBorderAlpha } from './paperUtils';
 
 const theme = createTheme({
@@ -17,54 +17,17 @@ const theme = createTheme({
   },
   // Tipografía
   typography: {
-    fontFamily: [
-      'Roboto',
-      '"Helvetica Neue"',
-      'Arial',
-      'sans-serif',
-    ].join(','),
-    h1: {
-      fontSize: textTheme.title.fontSize.h1,
-      fontWeight: 700,
-      lineHeight: textTheme.title.lineHeight
-    },
-    h2: {
-      fontSize: textTheme.title.fontSize.h2,
-      fontWeight: 700,
-      lineHeight: textTheme.title.lineHeight
-    },
-    h3: {
-      fontSize: textTheme.title.fontSize.h3,
-      fontWeight: 600,
-      lineHeight: textTheme.title.lineHeight
-    },
-    h4: {
-      fontSize: textTheme.title.fontSize.h4,
-      fontWeight: 600,
-      lineHeight: textTheme.title.lineHeight
-    },
-    h5: {
-      fontSize: textTheme.title.fontSize.h5,
-      fontWeight: 500,
-      lineHeight: textTheme.title.lineHeight
-    },
-    h6: {
-      fontSize: textTheme.title.fontSize.h6,
-      fontWeight: 500,
-      lineHeight: textTheme.title.lineHeight
-    },
-    button: {
-      textTransform: 'none',
-      fontWeight: 600,
-      lineHeight: textTheme.root.lineHeight
-    }
+    fontFamily: FONT_FAMILY.body,
+    ...textTheme.title,
+    ...textTheme.variants
   },
 
   components: {
     MuiCssBaseline: {
       styleOverrides: {
         '#root': {
-          ...textTheme.root
+          ...textTheme.root,
+          fontOpticalSizing: "auto",
         },
       },
     },

@@ -11,7 +11,11 @@ export const getCampaigns = async<T extends CampaignParams>(params?: T):
 }
 
 export const getCampaign = async (id: string): Promise<CampaignDetailed> => {
-    const campaign = await axiosCRM.get(`/campaigns/${id}`)
+    // detailed: true es obligatorio: sin él el backend devuelve CampaignResponse (sin
+    // creator/updater, que solo existen en CampaignDetailedResponse) y el front cae al
+    // fallback "Sistema" en DetailsMetadata aunque la campaña sí tenga creador/editor
+    // reales. Mismo patrón de bug ya resuelto antes en getFieldAutomation (ver ese archivo).
+    const campaign = await axiosCRM.get(`/campaigns/${id}`, { params: { detailed: true } })
     return campaign.data
 }
 

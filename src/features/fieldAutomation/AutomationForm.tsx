@@ -10,6 +10,7 @@ import { ConditionBuilder } from './ConditionBuilder';
 import { ActionBuilder } from './ActionBuilder';
 import type { LeadField } from 'src/types/leadFields';
 import type { NativeFieldOptions } from 'src/features/lead/nativeLeadFields';
+import type { AutomationCompatibility } from 'src/types/shared';
 import GenericPaper from 'src/components/layout/container/GenericPaper';
 import CustomChip from 'src/components/ui/details/CustomChip';
 import { showCommonErrorToast, showToast } from 'src/utils/feedback';
@@ -60,6 +61,7 @@ interface AutomationFormProps {
   onSave: (data: FieldAutomationPost) => Promise<unknown>;
   fields?: LeadField[];
   nativeOptions?: NativeFieldOptions;
+  compatibilityMatrix?: AutomationCompatibility;
   readOnly?: boolean;
   isDuplicating?: boolean;
   submitRef?: React.RefObject<(() => void) | null>
@@ -67,7 +69,7 @@ interface AutomationFormProps {
 
 /**Formulario */
 export const AutomationForm: React.FC<AutomationFormProps> = ({ initialData, onSave,
-  campaignId = "", fields = [], nativeOptions, readOnly = false, isDuplicating = false, submitRef = null }) => {
+  campaignId = "", fields = [], nativeOptions, compatibilityMatrix = {}, readOnly = false, isDuplicating = false, submitRef = null }) => {
 
   // INICIALIZACIÓN
   const defaultValues = useMemo(() => {
@@ -136,7 +138,10 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({ initialData, onS
         if (action.type === ActionTypeEnum.COPY_FROM_FIELD && !action.source_field_id) {
           errors.push('Las acciones de copiar deben tener un campo origen');
         }
-        if (action.type === ActionTypeEnum.SET_VALUE && action.value === null) {
+        if (action.type === ActionTypeEnum.CONCAT_FIELDS && (!action.source_field_ids || action.source_field_ids.length === 0)) {
+          errors.push('Las acciones de concatenar deben tener al menos un campo a unir');
+        }
+        if ((action.type === ActionTypeEnum.SET_VALUE || action.type === ActionTypeEnum.SET_VALUE_IF_EMPTY) && action.value === null) {
           errors.push('Las acciones de establecer valor deben tener un valor');
         }
       }
@@ -173,6 +178,10 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({ initialData, onS
         target_field_id: action.target_field_id,
         ...(action.value !== null && { value: action.value }),
         ...(action.source_field_id && { source_field_id: action.source_field_id }),
+        // CONCAT_FIELDS: faltaba acá -- se armaba bien en el formulario (ActionRow) pero se
+        // perdía al limpiar el payload antes de mandarlo al backend (bug real encontrado
+        // 2026-08-15, mientras se sumaba soporte para este tipo de acción).
+        ...(action.source_field_ids && action.source_field_ids.length > 0 && { source_field_ids: action.source_field_ids }),
       }));
 
       const payloadToBackend: FieldAutomationPost = {
@@ -388,6 +397,7 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({ initialData, onS
               isRoot
               fields={fields}
               nativeOptions={nativeOptions}
+              compatibilityMatrix={compatibilityMatrix}
               readOnly={readOnly}
             />
           </AccordionDetails>
@@ -395,7 +405,8 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({ initialData, onS
 
 
         {/* Actions Section */}
-        <ActionBuilder control={control} register={register} leadFields={fields} nativeOptions={nativeOptions} readOnly={readOnly} setValue={setValue} />
+        <ActionBuilder control={control} register={register} leadFields={fields} nativeOptions={nativeOptions}
+          compatibilityMatrix={compatibilityMatrix} readOnly={readOnly} setValue={setValue} />
 
         {/* Preview Section */}
         <Description control={control} conditions={conditions} fields={fields} />

@@ -6,10 +6,12 @@ import { SelectableTableRow } from "shared/ui/lists/CustomTableRow"
 import type { LeadField, LeadFieldValue } from "src/types/leadFields"
 import type { Lead } from "src/types/leads"
 import { useNavigate } from "react-router-dom"
-import { Box, Chip, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, useTheme, Checkbox, TableSortLabel, Tooltip } from "@mui/material"
+import { Box, Chip, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, useTheme, Checkbox, TableSortLabel, Tooltip, IconButton } from "@mui/material"
+import OpenInNewIcon from "@mui/icons-material/OpenInNew"
 import type { Palette } from "@mui/material/styles"
 import { getTypeIconAndColor } from "../../leadFields/LeadFieldTypeIcon"
 import { formatUserFullName } from "src/utils/formatters"
+import ReferenceChip from "shared/ui/details/ReferenceChip"
 
 // Tipos semánticos para los campos nativos (id < 0)
 const NATIVE_KEY_TYPES: Record<string, { type: string; subtype?: string }> = {
@@ -103,18 +105,23 @@ interface LeadTablePresentationProps {
         addItem: (item: Lead | Lead[]) => void;
         removeItem: (item: Lead) => void;
         removeAllItems: () => void;
-    }
+    },
+    // Clic simple: abre el sidebar de detalle rápido. Ir al detalle completo ahora es siempre
+    // explícito, con el ícono de la última columna (ver más abajo) -- ya no hay doble clic.
+    // Si no se pasa (uso fuera de LeadListPage, si lo hubiera), se cae al comportamiento viejo.
+    onLeadClick?: (id: string) => void,
 }
 
 export const LeadTablePresentation = memo(({ leads, selectedColumns, modalProps, orderProps,
     dragProps: { dragEvents, dragStyles },
-    selectCheckboxProps: { checkedItems, addItem, removeItem, removeAllItems } }: LeadTablePresentationProps) => {
+    selectCheckboxProps: { checkedItems, addItem, removeItem, removeAllItems },
+    onLeadClick }: LeadTablePresentationProps) => {
 
     const nav = useNavigate()
     const { palette } = useTheme()
 
     const areAllItemsChecked = useMemo(() => checkedItems.size === leads.length, [checkedItems, leads])
-    const onRowClick = useCallback((id: string) => nav(`/leads/${id}`), [nav])
+    const onRowClick = useCallback((id: string) => onLeadClick ? onLeadClick(id) : nav(`/leads/${id}`), [nav, onLeadClick])
 
     // ── Scroll horizontal sincronizado arriba/abajo ───────────────────────────
     const tableContainerRef = useRef<HTMLDivElement>(null)
@@ -194,8 +201,11 @@ export const LeadTablePresentation = memo(({ leads, selectedColumns, modalProps,
                                     onChange={(_, checked) => checked ? addItem(leads) : removeAllItems()}
                                 />
                             </TableCell>
-                            {/* Columna fija de referencia (ej. "L-0001") -- siempre primera, no es
-                                parte de las columnas custom seleccionables/reordenables. */}
+                            {/* Columna fija después del checkbox -- ícono para ir al detalle completo,
+                                separado del clic de la fila (que ahora solo abre el sidebar). */}
+                            <TableCell padding="checkbox" />
+                            {/* Columna fija de referencia (ej. "L-0001") -- siempre primera de las
+                                columnas de datos, no es parte de las columnas custom seleccionables/reordenables. */}
                             <TableCell align="left" sx={{ fontWeight: 600 }}>Referencia</TableCell>
                             {selectedColumns.map((column, idx) =>
                                 <LeadTableHeaderRow key={column.id} column={column} idx={idx} orderProps={orderProps}
@@ -217,8 +227,15 @@ export const LeadTablePresentation = memo(({ leads, selectedColumns, modalProps,
                                         }}
                                     />
                                 </TableCell>
+                                <TableCell padding="checkbox" onClick={e => e.stopPropagation()}>
+                                    <Tooltip title="Ver detalle completo">
+                                        <IconButton size="small" onClick={() => nav(`/leads/${lead.id}`)}>
+                                            <OpenInNewIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
+                                </TableCell>
                                 <TableCell align="left" sx={{ whiteSpace: 'nowrap' }}>
-                                    {lead.reference ?? '—'}
+                                    {lead.reference ? <ReferenceChip reference={lead.reference} /> : '—'}
                                 </TableCell>
                                 <LeadTableBodyRow key={lead.id} lead={lead} modalProps={modalProps} selectedColumns={selectedColumns} />
                             </SelectableTableRow>

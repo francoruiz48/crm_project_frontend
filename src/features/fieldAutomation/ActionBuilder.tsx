@@ -5,6 +5,7 @@ import type { AutomationAction, FieldAutomationPost } from 'src/types/automation
 import { ActionRow } from './ActionRow';
 import type { LeadField } from 'src/types/leadFields';
 import type { NativeFieldOptions } from 'src/features/lead/nativeLeadFields';
+import type { AutomationCompatibility } from 'src/types/shared';
 import { useFieldArray, type Control, type Path, type UseFormRegister, type UseFormSetValue } from 'react-hook-form';
 import CommonButton from 'src/components/ui/buttons/CommonButton';
 import GenericPaper from 'src/components/layout/container/GenericPaper';
@@ -16,6 +17,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 interface ActionBuilderProps {
   leadFields: LeadField[];
   nativeOptions?: NativeFieldOptions;
+  compatibilityMatrix?: AutomationCompatibility;
   readOnly?: boolean;
   control: Control<FieldAutomationPost, unknown, FieldAutomationPost>,
   register: UseFormRegister<FieldAutomationPost>,
@@ -28,7 +30,7 @@ const createEmptyAction = (): AutomationAction => ({
   value: null,
 });
 
-export const ActionBuilder = memo(({ control, register, leadFields, nativeOptions, readOnly = false, setValue }: ActionBuilderProps) => {
+export const ActionBuilder = memo(({ control, register, leadFields, nativeOptions, compatibilityMatrix, readOnly = false, setValue }: ActionBuilderProps) => {
 
   const { fields, append, remove } = useFieldArray({ name: "actions", control, keyName: "idField" })
 
@@ -40,7 +42,9 @@ export const ActionBuilder = memo(({ control, register, leadFields, nativeOption
     if (fields.length > 1) { remove(index) }
   };
 
-  const handleUpdateAction = (name: Path<FieldAutomationPost>, value?: string | number | boolean | null) => {
+  // Ensanchado para aceptar arrays (source_field_ids, CONCAT_FIELDS) además de los valores
+  // simples de siempre.
+  const handleUpdateAction = (name: Path<FieldAutomationPost>, value?: string | number | boolean | (string | number)[] | null) => {
     setValue(name, value)
   };
 
@@ -94,6 +98,7 @@ export const ActionBuilder = memo(({ control, register, leadFields, nativeOption
                   index={index}
                   fields={leadFields}
                   nativeOptions={nativeOptions}
+                  compatibilityMatrix={compatibilityMatrix}
                   readOnly={readOnly}
                   onUpdate={handleUpdateAction}
                 />

@@ -191,6 +191,16 @@ El header `X-Organization-Id` se toma de `localStorage.selected_org`. El `UserCo
 - Para colores dinámicos del backend, usar `getColorShades(colorName | hex, theme)` que devuelve `{ LIGHTER, LIGHT, MAIN, DARK, DARKER }`
 - Los componentes `CustomChip`, `ChipSelect`, `CustomAvatar`, `GenericPaperColoredSection` aceptan `color` como prop y derivan los shades automáticamente
 
+### Sistema tipográfico
+La app usa un sistema centralizado de tipografía definido en `src/theme/typographyTheme.tsx`:
+
+- **`FONT_FAMILY`** — fuentes `display` (Sora, para títulos destacados) y `body` (Inter, para el resto)
+- **`FONT_SIZES`** — escala de tamaños `xs`/`sm`/`md`/`lg`/`xl`
+- **`TITLE_LINE_HEIGHT`** — line-height fijo para headings (`1.2`)
+- **`textTheme`** — agrupa `root`, `title` (h1-h6 con fontSize+fontWeight+lineHeight) y `variants` (body1/body2/subtitle/caption/overline/button)
+
+**Regla:** no usar `fontSize` ni `fontWeight` inline en componentes. Usar los `variant` de MUI (`h1`-`h6`, `body1`, `subtitle2`, etc.) que ya traen los valores del theme. Para texto display (títulos de stat cards, hero headers), usar `CommonCRMTitle` con `font="display"`. Para body text con tamaño personalizado, usar `CommonCRMText` con `size`.
+
 ### Texto en español
 - Todo texto visible al usuario (labels, botones, toasts, mensajes de validación) va en español
 - Código (nombres de variables, funciones, tipos) en inglés

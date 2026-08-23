@@ -168,7 +168,11 @@ interface NumberValueProps {
 }
 
 export const NumberValue = ({ value, subtype, size = "medium", ratingCounter = false, ratingTooltip = false }: NumberValueProps) => {
-    if (!value || isNaN(value)) return
+    // Bug real encontrado 2026-08-11: `!value` trataba 0 como "sin valor" (ej. una Calificación
+    // Estrellas en 0, un valor real y válido) y no renderizaba nada -- sin mostrar tampoco el
+    // placeholder de "Sin valor" (ver LeadDetailsSections.tsx, que para NUMBER siempre arma este
+    // componente en vez de caer en el placeholder cuando corresponde).
+    if (value === undefined || isNaN(value)) return
 
     switch (subtype) {
         case "MONEY": return formatMoney(value)

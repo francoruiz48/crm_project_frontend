@@ -16,9 +16,9 @@ const CHIP_SIZES = {
 const ICON_SIZE_EM = textTheme.root.lineHeight
 
 const CustomChip = memo(styled(Chip, {
-    shouldForwardProp: (prop) => prop !== "chipColor"
+    shouldForwardProp: (prop) => prop !== "chipColor" && prop !== "squared"
 })(
-    ({ theme, chipColor, defaultColor = "primary", size = "small" }) => {
+    ({ theme, chipColor, defaultColor = "primary", size = "small", squared = false }) => {
 
         const resolvedColor = chipColor ?? defaultColor
         const paletteColors = getColorShades(resolvedColor, theme)
@@ -29,7 +29,9 @@ const CustomChip = memo(styled(Chip, {
             fontWeight: "500",
             height: "auto",
             border: "1px solid",
-            borderRadius: ".75rem",
+            // Los tags usan `squared` para distinguirse a simple vista del resto de los chips
+            // (etapa, referencia, etc.), que mantienen el redondeo original.
+            borderRadius: squared ? ".375rem" : ".75rem",
             backgroundColor: theme.alpha(paletteColors.LIGHT, CHIP_OPACITY),
             borderColor: theme.alpha(paletteColors.MAIN, .5),
             color: theme.palette.contrast[900],

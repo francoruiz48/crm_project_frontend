@@ -46,7 +46,11 @@ export const getUpdatedLead = (oldLead: LeadDetailed, newLead: Lead) => {
             related_leads: newfieldValuesCopy[oidx].related_leads,
         }
     })
-    return { ...oldLead, field_values: newFieldValues } as LeadDetailed
+    // Antes solo se copiaba field_values, así que "Modificado por"/"Fecha de actualización"
+    // (DetailsMetadata.tsx) se quedaban con el valor viejo de oldLead hasta refrescar la
+    // página -- newLead (la respuesta fresca del backend) sí trae updated_at/updater
+    // actualizados, pero se descartaban acá.
+    return { ...oldLead, field_values: newFieldValues, updated_at: newLead.updated_at, updater: newLead.updater } as LeadDetailed
 }
 
 export interface PartialFormValue {

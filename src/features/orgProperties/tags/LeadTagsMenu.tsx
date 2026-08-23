@@ -101,7 +101,7 @@ export const LeadTags = ({ lead, updateLeadInfo }: { lead: LeadDetailed, updateL
             <Stack direction="row" spacing={.75} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center", width: "100%" }}>
                 {lead.tags.map(tag =>
                     <CustomChip key={`lead-${tag.id}`} size="small" chipColor={tag.color} defaultColor="secondary"
-                        label={tag.name} onDelete={canUpdateLead ? () => handleUnassignTag(tag) : undefined} />
+                        label={tag.name} squared onDelete={canUpdateLead ? () => handleUnassignTag(tag) : undefined} />
                 )}
                 <Can permission="lead:update">
                     <InlineTagAdder tagList={availableTags} onCreateOrAssign={handleCreateOrAssign}
@@ -167,7 +167,9 @@ const InlineTagAdder = ({ tagList, onCreateOrAssign, onSelectExisting, disabled 
             <Chip icon={<AddIcon fontSize="inherit" />} label="Agregar" size="small" variant="outlined"
                 onClick={disabled ? undefined : () => setAdding(true)}
                 sx={{
-                    height: "auto", padding: "1px 0px", fontSize: ".75rem", fontWeight: 500, borderRadius: ".75rem",
+                    // Mismo radio "squared" que ahora usan los tags de al lado (ver CustomChip),
+                    // para que este chip quede visualmente consistente con ellos.
+                    height: "auto", padding: "1px 0px", fontSize: ".75rem", fontWeight: 500, borderRadius: ".375rem",
                     borderStyle: "dashed", color: "text.secondary", cursor: disabled ? "default" : "pointer",
                     "& .MuiChip-label": { paddingLeft: "8px", paddingRight: "8px" },
                 }} />
@@ -217,7 +219,7 @@ const InlineTagAdder = ({ tagList, onCreateOrAssign, onSelectExisting, disabled 
                                 //procesarse el clic sobre la sugerencia.
                                 onMouseDown={e => e.preventDefault()}
                                 onClick={() => selectSuggestion(tag)}>
-                                <CustomChip size="small" chipColor={tag.color} label={tag.name} sx={{ pointerEvents: "none" }} />
+                                <CustomChip size="small" chipColor={tag.color} label={tag.name} squared sx={{ pointerEvents: "none" }} />
                             </ListItemButton>
                         ))}
                     </List>

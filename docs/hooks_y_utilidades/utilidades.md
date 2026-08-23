@@ -146,7 +146,13 @@ Tema MUI creado con `createTheme` y `colorSchemes` (light/dark). Configura:
 Paletas de colores light/dark con colores personalizados: `primary`, `secondary`, `success`, `info`, `warning`, `error`, `contrast` (fondos oscuros/claros), `alpha` helper.
 
 ### `typographyTheme.tsx`
-Sistema de tipografía responsive con tamaños base: `root` (16px), `title` (h1 2.5rem → h6 1rem).
+Sistema de tipografía centralizado. Exports:
+- `FONT_FAMILY` — `{ display: 'Sora, Inter, sans-serif', body: 'Inter, sans-serif' }`
+- `FONT_SIZES` — `{ xs: '.75rem', sm: '0.875rem', md: '1rem', lg: '1.125rem', xl: '1.25rem' }`
+- `TITLE_LINE_HEIGHT` — `1.2` (line-height para todos los headings)
+- `textTheme` — `{ root, title, variants }` donde `title` tiene h1-h6 (fontSize+fontWeight+lineHeight) y `variants` tiene body1/body2/subtitle/caption/overline/button
+
+Consumido por `theme.tsx` via spread (`...textTheme.title, ...textTheme.variants`). No importar `typographyTheme` directamente en componentes — usar los `variant` de MUI o `CommonCRMText`/`CommonCRMTitle`.
 
 ### `paperUtils.tsx`
 Helpers para calcular alpha de bordes según elevation de Paper.

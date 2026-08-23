@@ -6,15 +6,18 @@ import type { Lead } from 'src/types/leads';
 import { getFilteredLeads } from '../../leadService';
 import { LeadBoardCard } from './LeadBoardCard';
 import { getColorShades } from 'src/utils/formatters';
+import type { BoardCardFieldCode } from '../../boardCardFields';
 
 interface LeadBoardColumnProps {
     column: LeadContactState;
     campaignId: number | string;
     activeFilters: unknown[];
     searchQuery?: string;
+    cardFields: BoardCardFieldCode[];
+    onLeadClick?: (id: string) => void;
 }
 
-export const LeadBoardColumn = ({ column, campaignId, activeFilters, searchQuery }: LeadBoardColumnProps) => {
+export const LeadBoardColumn = ({ column, campaignId, activeFilters, searchQuery, cardFields, onLeadClick }: LeadBoardColumnProps) => {
     const [leads, setLeads] = useState<Lead[]>([]);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
@@ -219,6 +222,8 @@ export const LeadBoardColumn = ({ column, campaignId, activeFilters, searchQuery
                                     index={index}
                                     columnColor={colorShades.MAIN}
                                     observerRef={isLast ? lastLeadElementRef : undefined}
+                                    cardFields={cardFields}
+                                    onLeadClick={onLeadClick}
                                 />
                             );
                         })}

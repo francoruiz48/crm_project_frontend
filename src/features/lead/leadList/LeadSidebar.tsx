@@ -16,6 +16,8 @@ import {
 import FilterAltIcon from '@mui/icons-material/FilterAlt'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import ViewColumnIcon from '@mui/icons-material/ViewColumn'
+import ViewListIcon from '@mui/icons-material/ViewList'
+import StyleIcon from '@mui/icons-material/Style'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -41,6 +43,14 @@ interface LeadSidebarProps {
         saveView: (name: string, visibility: string, existingView?: LeadView) => Promise<unknown>
         loadView: (view: LeadView) => void
         currentView: LeadViewParams | undefined
+    }
+    // Se necesita acá para poder abrir, desde "Opciones de Vista", los mismos modales
+    // (columns_selector / card_fields_selector) que se renderizan en LeadListPage -- controlados
+    // de forma centralizada vía useModal(), no hay estado propio del sidebar para esto.
+    modalProps: {
+        openModalId?: string
+        handleOpen: (idModal: string) => void
+        handleClose: () => void
     }
     onToggle: () => void
     formResetKey?: number
@@ -148,7 +158,7 @@ const ViewGroup = memo(({ group, views, onLoad, onEdit, onDelete }: ViewGroupPro
 // ── Sidebar principal ─────────────────────────────────────────────────────
 export const LeadSidebar = memo(({
     campaignId, filters, headers, setFiltersAndHeaders,
-    presentationProps, viewUpdateProps, onToggle, formResetKey
+    presentationProps, viewUpdateProps, modalProps, onToggle, formResetKey
 }: LeadSidebarProps) => {
 
     const { palette } = useTheme()
@@ -253,6 +263,32 @@ export const LeadSidebar = memo(({
                 </ToggleButtonGroup>
             </Box>
 
+            {/* ── Opciones de Vista ──
+                Tabla: selector de columnas (siempre existió, reubicado acá desde el toolbar
+                superior). Tablero: selector de elementos de la tarjeta (nuevo). Un solo botón,
+                condicional al modo -- no tiene sentido mostrar los dos a la vez. */}
+            <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${palette.divider}`, flexShrink: 0 }}>
+                <Typography variant="caption"
+                    sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.7, color: 'text.disabled', display: 'block', mb: 1 }}>
+                    Opciones de Vista
+                </Typography>
+                {presentationProps.presentationMode === 'TABLE' ? (
+                    <Button variant="outlined" size="small" fullWidth
+                        startIcon={<ViewListIcon sx={{ fontSize: 16 }} />}
+                        onClick={() => modalProps.handleOpen('columns_selector')}
+                        sx={{ justifyContent: 'flex-start', color: 'text.secondary', borderColor: 'divider' }}>
+                        Campos a Mostrar
+                    </Button>
+                ) : (
+                    <Button variant="outlined" size="small" fullWidth
+                        startIcon={<StyleIcon sx={{ fontSize: 16 }} />}
+                        onClick={() => modalProps.handleOpen('card_fields_selector')}
+                        sx={{ justifyContent: 'flex-start', color: 'text.secondary', borderColor: 'divider' }}>
+                        Elementos de la Tarjeta
+                    </Button>
+                )}
+            </Box>
+
             {/* ── Área scrollable ── */}
             <Box sx={{ flex: 1, overflowY: 'auto' }}>
 
@@ -317,7 +353,6 @@ export const LeadSidebar = memo(({
                             showTitle={false}
                             showHeaders={false}
                             showSectionHeader
-                            activeFilterCount={filters.length}
                             formResetKey={formResetKey}
                         />
                     ) : (

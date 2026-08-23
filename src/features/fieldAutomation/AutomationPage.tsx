@@ -14,6 +14,8 @@ import { getLeadFlowStates } from '../leadFlows/leadFlowServices/FlowService';
 import { getTeams } from '../lead/teamService';
 import { getUsersInOrg } from 'src/features/auth/userServices';
 import { getCampaign } from 'src/features/campaigns/campaignServices';
+import { getDictionaries } from 'src/services/generalService';
+import type { AutomationCompatibility } from 'src/types/shared';
 import { showCommonErrorToast } from 'src/utils/feedback';
 import { useLoading } from 'src/hooks/useLoading';
 import GenericPaper from 'src/components/layout/container/GenericPaper';
@@ -54,6 +56,11 @@ export const AutomationPage = () => {
 
   const [fields, setFields] = useState<LeadField[]>([]);
   const [nativeOptions, setNativeOptions] = useState<NativeFieldOptions>({ contactStates: [], leadStates: [], teams: [], users: [] });
+  // Qué operadores/tipos de acción tiene sentido ofrecer según el tipo del campo elegido en
+  // cada condición/acción (ver ConditionRow/ActionRow) -- viene del backend
+  // (AUTOMATION_COMPATIBILITY_MATRIX) para no duplicar esa regla acá y que quede desactualizada
+  // como pasó hasta ahora (ver comentarios en types/automation.ts, 2026-08-15).
+  const [compatibilityMatrix, setCompatibilityMatrix] = useState<AutomationCompatibility>({});
 
   const formSubmitRef = useRef<() => void>(null);
 
@@ -73,6 +80,10 @@ export const AutomationPage = () => {
     // de leads, para poder usarlos en condiciones/acciones de la automatización.
     await getLeadFields({ detailed: false, only_active: true, campaign_id: campaignId, page_size: 0 })
       .then(data => setFields([...NATIVE_LEAD_FIELDS, ...data.items]))
+      .catch(e => showCommonErrorToast(e))
+
+    getDictionaries(["automation_compatibility_matrix"])
+      .then(dict => setCompatibilityMatrix(dict.automation_compatibility_matrix ?? {}))
       .catch(e => showCommonErrorToast(e))
 
     // Opciones reales para los selectores de valor de los campos nativos tipo NATIVE_ID
@@ -183,6 +194,7 @@ export const AutomationPage = () => {
             onSave={handleSaveLoad}
             fields={fields}
             nativeOptions={nativeOptions}
+            compatibilityMatrix={compatibilityMatrix}
             readOnly={effectiveReadOnly}
             isDuplicating={isDuplicating}
             submitRef={formSubmitRef}
