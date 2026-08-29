@@ -101,7 +101,13 @@ export interface FieldAutomation extends FieldAutomationPost {
   id: string;
 }
 
-export interface FieldAutomationDetailed extends FieldAutomation, Metadata { }
+export interface FieldAutomationDetailed extends FieldAutomation, Metadata {
+  // Resumen legible ("Si <condiciones> entonces <acciones>") armado por el backend al vuelo
+  // (ver backend/app/services/field_automation_summary.py) -- no viene en create/update, solo
+  // en GET detallado. Se muestra como subtítulo en AutomationList.tsx en vez de `description`
+  // (texto libre manual, pedido por el usuario 2026-08-29).
+  summary?: string | null;
+}
 
 // ==========================================
 // LABELS Y DESCRIPCIONES

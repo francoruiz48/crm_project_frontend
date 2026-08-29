@@ -184,7 +184,9 @@ export const AutomationList = () => {
                                 </ChipTooltip>
                               </Stack>
                             }
-                            secondary={auto.description || "Sin descripción"}
+                            // Resumen preciso armado por el backend (ver AGENTS.md §58/59)
+                            // en vez de la descripción manual, que puede estar vacía o desactualizada.
+                            secondary={auto.summary || auto.description || "Sin resumen disponible"}
                           />
                         </ResponsiveListItem>
                       ))}
