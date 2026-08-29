@@ -7,7 +7,7 @@ import type { Campaign } from "./campaigns";
 import type { Team } from "./teams";
 
 export interface LeadPostValue {
-  field_id: number;
+  field_id: string;
   value: string | number[] | number | FileList;
 }
 export interface LeadPost {

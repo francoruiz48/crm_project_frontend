@@ -62,7 +62,7 @@ export const LeadForm = ({ existingValues, existingLeadFields, campaignId, onSub
 
     //Mapa de field_id -> path del valor en el fieldArray, para que un campo dependiente pueda "observar" a su padre
     const fieldIdToValuePath = useMemo(() => {
-        const map = new Map<number, Path<LeadPostForm>>()
+        const map = new Map<string, Path<LeadPostForm>>()
         fields.forEach((f, idx) => map.set(f.field_id, `values.${idx}.value` as Path<LeadPostForm>))
         return map
     }, [fields])
@@ -80,8 +80,8 @@ export const LeadForm = ({ existingValues, existingLeadFields, campaignId, onSub
     }, [errors.campaign_id, setCampaignError])
 
     const [leadFields, setLeadFields] = useState<LeadField[]>(existingLeadFields ?? [])
-    const [relatedLeads, setRelatedLeads] = useState<Map<number, Lead[]>>(new Map())
-    const [selectors, setSelectors] = useState<Map<number, NomenclatorItem[]>>(new Map())
+    const [relatedLeads, setRelatedLeads] = useState<Map<string, Lead[]>>(new Map())
+    const [selectors, setSelectors] = useState<Map<string, NomenclatorItem[]>>(new Map())
 
     const isFieldActive = (field: LeadField) => {
         const f = field as unknown as { active?: boolean }
@@ -124,13 +124,13 @@ export const LeadForm = ({ existingValues, existingLeadFields, campaignId, onSub
                     .map(field => ({
                         field_id: field.id,
                         fieldData: field
-                    }) as LeadPostFormValues))
+                    }) as unknown as LeadPostFormValues))
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [replace])
 
     //Actualiza los leadFields respecto al campaignId seleccionado. Si ya hay existingLeadFields, no busca.
-    const fetchLeadFields = useCallback(async (campaignId: string | number, existingLeadFields?: LeadField[], existingValues?: LeadFieldValue[]) => {
+    const fetchLeadFields = useCallback(async (campaignId: string, existingLeadFields?: LeadField[], existingValues?: LeadFieldValue[]) => {
         if (campaignId == null) return
         if (existingLeadFields) {
             setLeadFields(existingLeadFields)
@@ -152,10 +152,10 @@ export const LeadForm = ({ existingValues, existingLeadFields, campaignId, onSub
 
     useEffect(() => {
         updateSelectorOptions(leadFields, "related_campaign_id", relatedLeads, ["LEAD"],
-            (related_campaign_id: number) => getLeads({ only_active: true, campaign_id: related_campaign_id, page_size: 0 }).then((res) => res.items))
+            (related_campaign_id: string) => getLeads({ only_active: true, campaign_id: related_campaign_id, page_size: 0 }).then((res) => res.items))
             .then(map => setRelatedLeads(map)).catch(() => setError("root", { message: "No se ha podido obtener la lista de leads relacionados" }))
         updateSelectorOptions(leadFields, "nomenclator_id", selectors, ["SELECTOR", "CHECKBOX"],
-            (nomenclator_id: number) => getNomenclatorItems({ only_active: true, nomenclator_id: nomenclator_id, page_size: 0 }).then((res) => res.items))
+            (nomenclator_id: string) => getNomenclatorItems({ only_active: true, nomenclator_id: nomenclator_id, page_size: 0 }).then((res) => res.items))
             .then(map => setSelectors(map)).catch(() => setError("root", { message: "No se ha podido obtener la lista del selector" }))
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [leadFields, setError])
@@ -183,19 +183,21 @@ export const LeadForm = ({ existingValues, existingLeadFields, campaignId, onSub
                                     </ColoredAccordionSummary>
                                     <AccordionDetails sx={{ mt: 2 }}>
                                         <Grid container sx={{ gap: ".25rem .5rem " }}>
-                                            {section.fields.map(sectField =>
-                                                <Grid size="grow" sx={{ alignItems: "center", minWidth: "20rem" }} key={sectField.field.id}>
-                                                    <LeadFormFieldType register={register} control={control} name={`values.${sectField.globalIdx}.value`}
-                                                        leadField={sectField.field.fieldData}
-                                                        relatedLeads={relatedLeads.get(sectField.field?.fieldData?.related_campaign_id ?? -1)}
-                                                        selectors={selectors.get(sectField.field?.fieldData?.nomenclator_id ?? -1)}
-                                                        parentName={sectField.field.fieldData.depends_on_field_id
-                                                            ? fieldIdToValuePath.get(sectField.field.fieldData.depends_on_field_id)
-                                                            : undefined}
-                                                        setValue={setValue}
-                                                        errorMessage={errors?.values?.[sectField.globalIdx]?.value?.message} />
-                                                </Grid>
-                                            )}
+                                            {section.fields.map(sectField => {
+                                                const fieldData = sectField.field?.fieldData
+                                                return (
+                                                    <Grid size="grow" sx={{ alignItems: "center", minWidth: "20rem" }} key={sectField.field.id}>
+                                                        <LeadFormFieldType register={register} control={control} name={`values.${sectField.globalIdx}.value`}
+                                                            leadField={sectField.field.fieldData}
+                                                            relatedLeads={fieldData?.related_campaign_id ? relatedLeads.get(fieldData.related_campaign_id) : undefined}
+                                                            selectors={fieldData?.nomenclator_id ? selectors.get(fieldData?.nomenclator_id) : undefined}
+                                                            parentName={fieldData.depends_on_field_id
+                                                                ? fieldIdToValuePath.get(fieldData.depends_on_field_id)
+                                                                : undefined}
+                                                            setValue={setValue}
+                                                            errorMessage={errors?.values?.[sectField.globalIdx]?.value?.message} />
+                                                    </Grid>)
+                                            })}
                                         </Grid>
                                     </AccordionDetails>
                                 </Accordion>

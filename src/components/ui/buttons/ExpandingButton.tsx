@@ -25,8 +25,13 @@ const ExpandingButton = styled(CommonButton, {
     }
 )
 
-export const ListAddButton = ({ children, ...props }: CommonBtnProps) => {
+export const ListAddButton = ({ children, expanded = false, ...props }: CommonBtnProps & { expanded?: boolean }) => {
 
+    if (expanded) return (
+        <CommonButton actionType='CREATE' {...props}>
+            {children ?? "Agregar"}
+        </CommonButton>
+    )
     return (
         <ExpandingButton actionType='CREATE' {...props}>
             {children ?? "Agregar"}

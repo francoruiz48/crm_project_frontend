@@ -27,6 +27,7 @@ import { FormControl, InputLabel, OutlinedInput, FormHelperText, } from "@mui/ma
 import { createFieldSection, getFieldSections } from "../orgProperties/fieldSections/fieldSectionsServices";
 import { InlineColorPickerButton } from "src/components/ui/forms/ColorPicker";
 import type { LeadFieldSection } from "src/types/orgProperties";
+import { InfoTextBox } from "src/components/ui/forms/InfoBox";
 
 //Mismo color neutro por defecto que usa el picker de color libre de etiquetas nuevas (LeadTagsMenu.tsx),
 //para que el selector de color de una sección nueva arranque igual en toda la app.
@@ -59,7 +60,7 @@ export const LeadFieldFormSidebar = ({ existingLF, campaign, leadFields, updateE
         else updateInfo(res)
       })
     } else {
-      return updateLeadField(data, existingLF.id).then(res => {
+      return updateLeadField(data, `${existingLF.id}`).then(res => {
         showToast(`El campo "${res.name}" se ha actualizado con éxito`)
         updateInfo(res)
       })
@@ -198,7 +199,7 @@ export const LeadFieldForm = ({ existingLF, campaign, leadFields, submit, onCanc
           addSection={section => setFieldSections(prev => [...prev, section])}
           nomenclators={nomenclators} campaigns={campaigns} types={fieldTypes} leadFields={leadFields ?? []}
           errors={errors} control={control} maskTemplates={maskTemplates}
-          existingLFId={existingLF?.id} formulas={excelFormulas} setValue={setValue} getValues={getValues}
+          existingLFId={existingLF?.id ? `${existingLF?.id}` : undefined} formulas={excelFormulas} setValue={setValue} getValues={getValues}
         />
       </SidebarContentActionsWrapper>
     </form >
@@ -375,27 +376,30 @@ const LeadFieldFormFields = ({ templates, maskTemplates, sections, addSection, t
         </Grid>
         <Grid size="grow" sx={{ minWidth: "20rem", justifyContent: "center" }} >
           <FormGroup row sx={{ my: .5, mx: 1, justifyContent: "space-evenly" }}>
-            <ControlledCheckbox
-              control={control}
-              name="required"
-              label="Obligatorio"
-              errorMessage={errors?.required?.message}
-              tooltip={`El campo ${required ? "no" : ""} podrá estar vacio.`}
-            />
-            <ControlledCheckbox
-              control={control}
-              name="is_primary"
-              label="Único"
-              errorMessage={errors?.is_primary?.message}
-              tooltip={`El valor ${primary ? "no" : ""}  podrá repetirse entre leads.`}
-            />
-            <ControlledCheckbox
-              control={control}
-              name="is_visible"
-              label="Visible"
-              errorMessage={errors?.is_visible?.message}
-              tooltip={`El campo ${!visible ? "no" : ""}  se verá en formularios.`}
-            />
+            <InfoTextBox infoText={`El campo ${required ? "no" : ""} podrá estar vacio.`}>
+              <ControlledCheckbox
+                control={control}
+                name="required"
+                label="Obligatorio"
+                errorMessage={errors?.required?.message}
+              />
+            </InfoTextBox>
+            <InfoTextBox infoText={`El valor ${primary ? "no" : ""}  podrá repetirse entre leads.`}>
+              <ControlledCheckbox
+                control={control}
+                name="is_primary"
+                label="Único"
+                errorMessage={errors?.is_primary?.message}
+              />
+            </InfoTextBox>
+            <InfoTextBox infoText={`El campo ${!visible ? "no" : ""}  se verá en formularios.`}>
+              <ControlledCheckbox
+                control={control}
+                name="is_visible"
+                label="Visible"
+                errorMessage={errors?.is_visible?.message}
+              />
+            </InfoTextBox>
           </FormGroup>
         </Grid>
       </Grid>

@@ -17,10 +17,10 @@ export const ValidationList = ({ leadField, handleSidebar }: ValidationListProps
 
     if (leadField.validation_rules.length === 0) {
         return (
-            <Stack spacing={2} sx={{ justifyContent: "center" }}>
+            <Stack spacing={2} sx={{ justifyContent: "center", alignItems: "center" }}>
                 <Typography variant="h4" sx={{ textAlign: "center" }}>No hay validaciones cargadas</Typography>
                 <Can permission="validation_rule:create">
-                    <ListAddButton variant='contained' onClick={() => handleSidebar("UPDATE_VAL", leadField)} />
+                    <ListAddButton variant='contained' expanded onClick={() => handleSidebar("UPDATE_VAL", leadField)} />
                 </Can>
             </Stack>
         )

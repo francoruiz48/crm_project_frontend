@@ -1,7 +1,6 @@
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
 import MuiAppBar, { type AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import { styled, useColorScheme, useTheme } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -10,6 +9,7 @@ import { drawerWidth } from './Sidebar';
 import UserInfo from './HeaderMenu';
 import { Divider, Stack } from '@mui/material';
 import MaterialUISwitch from './ThemeSlider';
+import { CommonCRMTitle } from 'src/components/ui/details/CommonText';
 
 interface AppBarProps extends MuiAppBarProps {
   open?: boolean;
@@ -69,8 +69,8 @@ export default function Header({ handleDrawerOpen, open }: HeaderProps) {
         >
           <MenuIcon />
         </IconButton>
-        <Typography variant="h3" noWrap component="div" color='primary'
-          sx={{ display: { xs: 'none', sm: 'block' } }} >MUI</Typography>
+        <CommonCRMTitle titleLevel='h3' font='display' noWrap color='primary'
+          sx={{ display: { xs: 'none', sm: 'block' } }} >MUI</CommonCRMTitle>
         <Box sx={{ flexGrow: 1 }} />
         <HeaderSearchBar />
         <Box sx={{ flexGrow: 1 }} />

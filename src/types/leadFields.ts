@@ -17,11 +17,11 @@ export interface ExcelFormulaTemplate {
 }
 
 export interface LeadFieldValue {
-  id: number;
+  id: string;
   active: boolean;
-  field_id: number;
+  field_id: string;
   value?: string | null;
-  lead_id: number;
+  lead_id: string;
   field: LeadField;
   nomenclator_items: NomenclatorItem[];
   related_leads: Lead[],
@@ -65,22 +65,22 @@ export interface LeadFieldPost {
 }
 
 export interface LeadField extends Omit<LeadFieldPost, "lead_field_section_id" | "campaign_id" | "nomenclator_id" | "related_campaign_id" | "depends_on_field_id"> {
-  id: string | number;
+  id: string;
   active?: boolean;
   name: string;
   configuration?: string;
   lead_field_section: LeadFieldSection;
-  organization_id: number;
+  organization_id: string;
   order: number;
   title_order: number | null;
   subtitle_order?: number | null;
   field_type_code: string;
   field_type: LeadFieldType,
   // FKs embebidas: siguen siendo el id interno viejo.
-  campaign_id: number;
-  nomenclator_id?: number | null;
-  related_campaign_id?: number | null;
-  depends_on_field_id?: number | null;
+  campaign_id: string;
+  nomenclator_id?: string | null;
+  related_campaign_id?: string | null;
+  depends_on_field_id?: string | null;
   field_subtype: LeadFieldType | null,
   field_template_name: string | null,
   /** Clave nativa en el modelo Lead (solo para campos del sistema, ej: "contact_state_id") */
