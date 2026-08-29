@@ -12,8 +12,8 @@ export interface CampaignPost {
 }
 export interface Campaign extends Omit<CampaignPost, "workspace_id"> {
   id: string;
-  organization_id: number | null;
-  workspace_id: number | null;
+  organization_id: string | null;
+  workspace_id: string | null;
 }
 
 export interface CampaignDetailed extends Campaign, Metadata { }

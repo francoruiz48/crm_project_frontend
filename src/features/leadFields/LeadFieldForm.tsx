@@ -199,7 +199,7 @@ export const LeadFieldForm = ({ existingLF, campaign, leadFields, submit, onCanc
           addSection={section => setFieldSections(prev => [...prev, section])}
           nomenclators={nomenclators} campaigns={campaigns} types={fieldTypes} leadFields={leadFields ?? []}
           errors={errors} control={control} maskTemplates={maskTemplates}
-          existingLFId={`${existingLF?.id}`} formulas={excelFormulas} setValue={setValue} getValues={getValues}
+          existingLFId={existingLF?.id ? `${existingLF?.id}` : undefined} formulas={excelFormulas} setValue={setValue} getValues={getValues}
         />
       </SidebarContentActionsWrapper>
     </form >

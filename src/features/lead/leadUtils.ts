@@ -94,14 +94,14 @@ export const createFormDataFromLead = (data: LeadPostForm) => {
  * Busca todos las opciones de los selectores necesarios para un formulario. Busca en todos ellos.
  */
 export const updateSelectorOptions = async<T>
-    (leadFields: LeadField[], idField: keyof LeadField, currentMap: Map<number, T[]>, filterTypes: string[], fetchFunction: (id: number) => Promise<T[]>) => {
-    const newMap = new Map<number, T[]>()
+    (leadFields: LeadField[], idField: keyof LeadField, currentMap: Map<string, T[]>, filterTypes: string[], fetchFunction: (id: string) => Promise<T[]>) => {
+    const newMap = new Map<string, T[]>()
     const promises: Array<Promise<void>> = []
 
     for (const leadField of leadFields) {
         if (!leadField.field_type_code) continue
         if (!filterTypes.includes(leadField.field_type_code)) continue
-        const fetchId = Number(leadField[idField])
+        const fetchId = `${leadField[idField] ?? null}`
         if (newMap.has(fetchId)) continue
         //Si ya existe, lo recupera sin hacer fetch
         if (currentMap.has(fetchId)) {
