@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Checkbox, Divider, FormControlLabel, Grid, Stack, ButtonGroup } from '@mui/material'
+import { Accordion, AccordionDetails, AccordionSummary, Checkbox, Divider, FormControlLabel, Grid, Stack, ButtonGroup, TextField } from '@mui/material'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CommonCRMText, CommonCRMTitle } from 'src/components/ui/details/CommonText'
 import CustomChip from 'src/components/ui/details/CustomChip'
@@ -7,13 +7,13 @@ import type { Permission } from 'src/types/roles'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
-import type { Dictionary } from 'src/types/shared'
-import { getDictionaries } from 'src/services/generalService'
 import { categorizePermissions } from './roleUtils'
 import { stopPropagationEvent } from 'src/utils/lists'
 import CommonButton from 'src/components/ui/buttons/CommonButton'
 import { useLoading } from 'src/hooks/useLoading'
 import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen'
+import { useDictionaryContext } from 'src/stores/DictionaryContext'
+import { useDebounce } from 'src/hooks/useDebounce'
 
 interface PermissionFormProps {
     selectedPermissionIds: string[],
@@ -25,11 +25,24 @@ interface PermissionFormProps {
 // los checkboxes y se notifican los cambios vía onSelectedChange.
 export const PermissionForm = ({ selectedPermissionIds, onSelectedChange }: PermissionFormProps) => {
 
+    const { dictionaries } = useDictionaryContext()
+    const entityNames = dictionaries.entities
+
     const [permissions, setPermissions] = useState<Permission[]>([])
-    const [entityNames, setEntityNames] = useState<Dictionary["entities"]>(undefined)
     // Categorías con su accordion abierto. El estado vive acá para que cada accordion
     // se pueda abrir/cerrar por separado, y el botón global "Abrir/Cerrar" lo fuerza en bloque.
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+
+    // Búsqueda por nombre de categoría (entidad). El valor crudo se escribe en el input
+    // y se propaga al filtro después del debounce para no recalcular en cada tecla.
+    const [searchTerm, setSearchTerm] = useState("")
+    const [debouncedSearch, setDebouncedSearch] = useState("")
+    const { debouncedFunction } = useDebounce(300)
+
+    const handleSearchChange = (value: string) => {
+        setSearchTerm(value)
+        debouncedFunction(() => setDebouncedSearch(value))
+    }
 
     // Set interno de ids seleccionados (derivado de la prop del padre). Las operaciones
     // de consulta (has) pasan de O(n) a O(1); el padre siempre recibe un array nuevo vía
@@ -37,19 +50,16 @@ export const PermissionForm = ({ selectedPermissionIds, onSelectedChange }: Perm
     const selectedIds = useMemo(() => new Set(selectedPermissionIds), [selectedPermissionIds])
 
     const fetchPermissions = useCallback(() => {
-        return Promise.all(
-            [getPermissions({ page_size: 0 }), getDictionaries(["entities"])]
-        ).then(([permsRes, dictsRes]) => {
+        return getPermissions({ page_size: 0 }).then((permsRes) => {
             setPermissions(permsRes.items)
-            setEntityNames(dictsRes.entities)
             // Abre la primera categoría por defecto (este then solo corre al montar,
             // porque fetchLoadPermissions se invoca una única vez en el mount)
-            const firstCategory = categorizePermissions(permsRes.items, dictsRes.entities)[0]?.[0]
+            const firstCategory = categorizePermissions(permsRes.items, entityNames)[0]?.[0]
             if (firstCategory) {
                 setExpandedCategories(new Set([firstCategory]))
             }
         })
-    }, [])
+    }, [entityNames])
 
     const { loading: loadPermissions, fnWithLoading: fetchLoadPermissions } = useLoading(fetchPermissions)
 
@@ -62,10 +72,22 @@ export const PermissionForm = ({ selectedPermissionIds, onSelectedChange }: Perm
         return categorizePermissions(permissions, entityNames)
     }, [permissions, entityNames])
 
+    // Filtra categorías por el término de búsqueda (matchea contra el nombre en español de la entidad)
+    const filteredCatPermissions = useMemo(() => {
+        if (!debouncedSearch.trim()) return catPermissions
+        const term = debouncedSearch.trim().toLowerCase()
+        return catPermissions.filter(([categoryName]) =>
+            categoryName.toLowerCase().includes(term)
+        )
+    }, [catPermissions, debouncedSearch])
+
     // Indica si TODAS las categorías están expandidas (para el texto del botón global)
-    const allCategoriesExpanded = catPermissions.length > 0 && catPermissions.every(([categoryName]) => expandedCategories.has(categoryName))
+    // Nota: se usa filteredCatPermissions para que "Cerrar Todo" solo cierre las visibles.
+    const allCategoriesExpanded = filteredCatPermissions.length > 0 && filteredCatPermissions.every(([categoryName]) => expandedCategories.has(categoryName))
 
     // Todos los ids de permisos, y solo los de lectura (view/view_all), para los selectors globales
+    // Se calculan sobre catPermissions (sin filtro) para que "Seleccionar todos" siempre
+    // abarque TODOS los permisos, no solo los visibles.
     const allPermissionIds = useMemo(() =>
         permissions.map(p => p.id),
         [permissions],
@@ -88,7 +110,7 @@ export const PermissionForm = ({ selectedPermissionIds, onSelectedChange }: Perm
     const allReadDetailsSelected = readDetailsPermissionIds.length > 0 && readDetailsPermissionIds.every(id => selectedIds.has(id))
 
     // Datos derivados por categoría, precomputados para no recalcularlos en cada render del map
-    const categoriesView = useMemo(() => catPermissions.map(([categoryName, perms]) => {
+    const categoriesView = useMemo(() => filteredCatPermissions.map(([categoryName, perms]) => {
         const categoryIds = perms.map(p => p.id)
         // Los permisos de lectura del encabezado solo se muestran si existen en esta categoría
         const viewPerm = perms.filter(p => p.codename === "view" || p.codename === "view_all").map(p => p.id)
@@ -101,7 +123,7 @@ export const PermissionForm = ({ selectedPermissionIds, onSelectedChange }: Perm
             categoryAllSelected: categoryIds.length > 0 && categoryIds.every(id => selectedIds.has(id)),
             categoryViewSelected: viewPerm.length > 0 && viewPerm.every(id => selectedIds.has(id)),
         }
-    }), [catPermissions, selectedIds])
+    }), [filteredCatPermissions, selectedIds])
 
     const toggle = (id: string) => {
         const next = new Set(selectedIds)
@@ -141,7 +163,7 @@ export const PermissionForm = ({ selectedPermissionIds, onSelectedChange }: Perm
         if (allCategoriesExpanded) {
             setExpandedCategories(new Set())
         } else {
-            setExpandedCategories(new Set(catPermissions.map(([categoryName]) => categoryName)))
+            setExpandedCategories(new Set(filteredCatPermissions.map(([categoryName]) => categoryName)))
         }
     }
 
@@ -149,6 +171,15 @@ export const PermissionForm = ({ selectedPermissionIds, onSelectedChange }: Perm
         <>
             <CommonCRMTitle titleLevel="h3">Permisos</CommonCRMTitle>
             <LoadingScreenWrapper loading={loadPermissions}>
+                <TextField
+                    label="Buscar categoría"
+                    size="small"
+                    fullWidth
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    sx={{ mb: 1 }}
+                    slotProps={{ input: { sx: { fontSize: "0.875rem" } } }}
+                />
                 <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", gap: 1, mb: 1, flexWrap: "wrap" }}>
                     <Stack direction="row" sx={{ alignItems: "center", gap: 1, flexWrap: "wrap" }}>
                         <FormControlLabel

@@ -12,7 +12,7 @@ import { useListPagination } from 'src/hooks/useListPagination'
 import PaginationComponent from 'shared/ui/lists/PaginationComponent'
 
 // Servicios y Tipos
-import { getDictionaries } from 'src/services/generalService'
+import { useDictionaryContext } from 'src/stores/DictionaryContext'
 import type { SystemAuditLog } from 'src/types/systemAudit'
 import type { Paginable } from 'src/types/shared'
 import { formatUserFullName } from 'src/utils/formatters'
@@ -41,7 +41,7 @@ const AuditTableRow = ({
     mappings
 }: {
     log: SystemAuditLog,
-    mappings: unknown
+    mappings: { entities: Record<string, string>, actions: Record<string, string> }
 }) => {
     const [open, setOpen] = useState(false)
     const hasChanges = log.changes && Object.keys(log.changes).length > 0;
@@ -109,7 +109,11 @@ const AuditTableRow = ({
 // --- Componente Principal ---
 export const SystemAuditList = () => {
     const [logs, setLogs] = useState<Paginable<SystemAuditLog> | null>(null)
-    const [defs, setDefs] = useState<{ entities: unknown, actions: unknown } | null>(null)
+    const { dictionaries } = useDictionaryContext()
+    const defs = useMemo(() => ({
+        entities: dictionaries.entities ?? {},
+        actions: dictionaries.system_audit_log_actions ?? {},
+    }), [dictionaries.entities, dictionaries.system_audit_log_actions])
     const { fetchPage, pageSize, refresh, pageComponentProps } = useListPagination(logs)
 
     // 1. Inicializamos React Hook Form para los filtros
@@ -124,17 +128,8 @@ export const SystemAuditList = () => {
     })
 
     // 2. Observamos todos los cambios del formulario
-    const formValues = useWatch({ control })
+    const formValues = useWatch({ control }) as AuditFilters
     const [debouncedFilters, setDebouncedFilters] = useState<AuditFilters>(formValues)
-
-    useEffect(() => {
-        getDictionaries(["entities", "system_audit_log_actions"]).then(data => {
-            setDefs({
-                entities: data.entities,
-                actions: data.system_audit_log_actions
-            })
-        })
-    }, [])
 
     // Transformamos los diccionarios en arreglos para el ControlledAutocomplete
     const entityOptions: SelectOption[] = useMemo(() => {
@@ -155,7 +150,7 @@ export const SystemAuditList = () => {
 
     // Petición a la API
     useEffect(() => {
-        const params: unknown = {
+        const params: Record<string, string | number | boolean> = {
             page: fetchPage,
             page_size: pageSize,
             order_by: "created_at",

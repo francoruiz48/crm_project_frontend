@@ -5,11 +5,10 @@ import { FormErrorMessage } from "shared/ui/forms/FormFeedback"
 import CommonButton from "shared/ui/buttons/CommonButton"
 import { useLoading } from "src/hooks/useLoading"
 import type { TeamDetailed, TeamMemberDetailed, TeamMemberPost, TeamMemberUpdate } from "src/types/teams"
-import type { DictionaryItem } from "src/types/shared"
 import type { UserPublic } from "src/types/users"
 import { createTeamMember, updateTeamMember } from "./teamServices"
 import { getUsersInOrg } from "src/features/auth/userServices"
-import { getDictionaries } from "src/services/generalService"
+import { useDictionaryContext } from "src/stores/DictionaryContext"
 import { setFormErrors } from "src/utils/forms"
 import { showToast } from "src/utils/feedback"
 import { useForm } from "react-hook-form"
@@ -69,11 +68,11 @@ interface FormValues {
 export const TeamMemberForm = ({ team, existingMember, excludedUserIds, submit, onCancel }: TeamMemberFormProps) => {
 
     const [users, setUsers] = useState<UserPublic[]>([])
-    const [roles, setRoles] = useState<DictionaryItem[]>([])
+    const { dictionaries } = useDictionaryContext()
+    const roles = useMemo(() => dictionaries.team_roles ?? [], [dictionaries.team_roles])
 
     useEffect(() => {
         if (!existingMember) getUsersInOrg().then(setUsers)
-        getDictionaries(["team_roles"]).then(res => setRoles(res.team_roles ?? []))
     }, [existingMember])
 
     const availableUsers = useMemo(() =>

@@ -5,9 +5,9 @@ import CommonButton from "shared/ui/buttons/CommonButton"
 import type { RoleDetailed } from "src/types/roles"
 import { Can } from "src/components/auth/Can"
 import { Accordion, AccordionDetails, AccordionSummary, ButtonGroup, Divider, Grid, Stack, Typography } from "@mui/material"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo } from "react"
 import CustomChip from "src/components/ui/details/CustomChip"
-import { getDictionaries } from "src/services/generalService"
+import { useDictionaryContext } from "src/stores/DictionaryContext"
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { NoItemsMessage } from "src/components/ui/lists/NoItemsMessage"
 import ROUTE_ICONS from "src/components/ui/icons/RouteIcons"
@@ -48,17 +48,11 @@ export const RoleDetails = ({ role, closeSidebar, handleSidebar, handleActive }:
 
 export const RolePermissionList = ({ role }: { role: RoleDetailed }) => {
 
-    const [entities, setEntities] = useState<Record<string, string> | undefined>(undefined)
-
-    useEffect(() => {
-        getDictionaries(["entities"])
-            .then((dict) => setEntities(dict.entities))
-    }, [])
-
+    const { dictionaries } = useDictionaryContext()
     const permissions = useMemo(() => {
         if (!role) return []
-        return categorizePermissions(role.permissions, entities)
-    }, [role, entities])
+        return categorizePermissions(role.permissions, dictionaries.entities)
+    }, [role, dictionaries.entities])
 
     return (
         <Stack spacing={2}>

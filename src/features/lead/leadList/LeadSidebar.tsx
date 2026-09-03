@@ -1,10 +1,10 @@
-import { cloneElement, memo, useCallback, useEffect, useRef, useState } from 'react'
+import { cloneElement, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LeadFilters } from '../leadListOptions/LeadFilters'
 import { ViewForm } from '../leadListOptions/LeadViewMenu'
 import PaginationComponent from 'shared/ui/lists/PaginationComponent'
 import { useListPagination } from 'src/hooks/useListPagination'
 import { deleteView, getLeadViews } from '../leadService'
-import { getDictionaries } from 'src/services/generalService'
+import { useDictionaryContext } from 'src/stores/DictionaryContext'
 import { showToast } from 'src/utils/feedback'
 import type { LeadView, LeadViewParams } from 'src/types/leads'
 import type { LeadFilter, LeadListParams, Paginable, DictionaryItem } from 'src/types/shared'
@@ -165,7 +165,8 @@ export const LeadSidebar = memo(({
 
     // ── Views state ──
     const [currentViews, setCurrentViews] = useState<Paginable<LeadView> | null>(null)
-    const [visibilities, setVisibilities] = useState<DictionaryItem[]>([])
+    const { dictionaries } = useDictionaryContext()
+    const visibilities = useMemo(() => dictionaries.lead_view_visibilities ?? [], [dictionaries.lead_view_visibilities])
     const { fetchPage, pageComponentProps, pageSize } = useListPagination(currentViews, 50)
 
     const fetchLeadViews = useCallback((page: number) => {
@@ -177,9 +178,6 @@ export const LeadSidebar = memo(({
     }, [campaignId, pageSize])
 
     useEffect(() => { fetchLeadViews(fetchPage) }, [fetchPage, fetchLeadViews])
-    useEffect(() => {
-        getDictionaries(['lead_view_visibilities']).then(res => setVisibilities(res.lead_view_visibilities ?? []))
-    }, [])
 
     const handleDeleteView = useCallback((viewId: string) => {
         deleteView(viewId).then(() => fetchLeadViews(fetchPage))
