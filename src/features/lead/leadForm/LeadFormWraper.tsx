@@ -167,7 +167,7 @@ export const SimulateLeadFormModal = ({ campaign, leadFields, onCancel, modalPro
             .filter(leadField => leadField.active)
             .map(leadField => detailedToNormalLeadField(leadField))
     }, [leadFields])
-    console.log(formattedLeadFields)
+
     return (
         <GenericModal {...modalProps} idModal="simulateLead" buttonText='Vista previa' maxWidth="xl" fullWidth
             btnProps={{ actionType: "DETAILS", variant: "outlined", color: "secondary", onlyTooltip: true }} sx={{ minWidth: "80vw" }} >

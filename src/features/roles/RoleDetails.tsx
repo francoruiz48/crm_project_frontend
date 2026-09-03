@@ -77,7 +77,7 @@ export const RolePermissionList = ({ role }: { role: RoleDetailed }) => {
                                 <AccordionDetails>
                                     <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: "center", flexWrap: "wrap" }}>
                                         {cat[1].map(perm => {
-                                            return <CustomChip key={perm.codename} label={perm.codename === "view_all" ? "Ver TODOS los registros" : perm.name}
+                                            return <CustomChip key={perm.codename} label={perm.codename === "view_all" ? "Ver lista de registros" : perm.name}
                                                 size="small" variant="outlined" chipColor="secondary" />
                                         })
                                         }
