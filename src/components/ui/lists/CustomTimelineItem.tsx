@@ -24,7 +24,7 @@ export const CustomTimelineItem = ({ entity, selected = false, last = false, chi
     return (
         <TimelineItem>
             <TimelineOppositeContent>
-                <MetadataItem {...metadata} small noIcon short noHour={!selected} />
+                <MetadataItem {...metadata} size="small" noIcon short noHour={!selected} />
             </TimelineOppositeContent>
             <TimelineSeparator>
                 <TimelineDot sx={{ backgroundColor: "transparent", p: 0 }}>

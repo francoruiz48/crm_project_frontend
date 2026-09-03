@@ -24,3 +24,10 @@ export const stopPropagationEvent = (callback: () => void = () => { }) => (e: Re
     e.stopPropagation()
     return callback()
 }
+
+export const areStringArraysEqual = (a1?: string[], a2?: string[]) => {
+    if (!a1 || !a2) return false
+    const sortedA1 = a1.sort()
+    const sortedA2 = a2.sort()
+    return JSON.stringify(sortedA1) === JSON.stringify(sortedA2)
+}

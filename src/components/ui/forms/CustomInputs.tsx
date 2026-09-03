@@ -4,6 +4,7 @@ import { FormErrorMessage } from "./FormFeedback";
 import { Controller, type Control, type FieldValues, type Path, type PathValue, type UseFormRegister, } from "react-hook-form";
 import { Box, Checkbox, FormControl, FormControlLabel, FormLabel, Grid, IconButton, InputAdornment, InputLabel, OutlinedInput, Rating, Slider, Stack, Switch, TextField, Typography, useColorScheme, type InputProps, type TextFieldProps, } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { CommonCRMText } from "../details/CommonText";
 
 interface BasicFormInput<T extends FieldValues> {
   label?: string;
@@ -186,8 +187,8 @@ export const ControlledCheckbox = <T extends FieldValues>
   return (
     <FormControl error={!!errorMessage} variant="standard" >
       <FormLabel error={!!errorMessage}>{title}</FormLabel>
-      <FormControlLabel required={required} sx={{ mr: 0, textDecoration: "inherit" }}
-        label={label}
+      <FormControlLabel required={required} sx={{ m: 0, textDecoration: "inherit" }}
+        label={<CommonCRMText size="sm">{label}</CommonCRMText>}
         control={
           <Controller name={name} control={control}
             render={({ field }) => (
