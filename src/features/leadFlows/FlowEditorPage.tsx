@@ -54,8 +54,6 @@ export const LeadFlowEditor = () => {
     }
   }, [editFlowId])
 
-  console.log(initialData)
-
   usePageTitle(initialData.name && `${initialData.name} | Editor de Flujo`)
 
   const { loading, fnWithLoading } = useLoading(fetchFlow)

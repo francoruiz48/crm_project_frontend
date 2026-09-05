@@ -131,6 +131,19 @@ Checkbox o Switch controlado con tooltip opcional:
 <ControlledSwitch control={control} name="notificar" label="Notificar" />
 ```
 
+### `InfoTextBox` — `forms/InfoBox.tsx`
+Componente "Más info": envuelve el contenido de un control con subrayado punteado + ícono de información, y muestra `infoText` en un tooltip al hacer hover. Reemplaza el `tooltip` directo del control (ej. checkboxes de `LeadFieldForm`), conservando el label visible limpio:
+```tsx
+<InfoTextBox infoText={`El campo ${required ? "no" : ""} podrá estar vacio.`}>
+  <ControlledCheckbox control={control} name="required" label="Obligatorio"
+    errorMessage={errors?.required?.message} />
+</InfoTextBox>
+```
+- `infoText` (obligatorio): texto del tooltip
+- `color` y `size` se delegan a `ChipTooltip` (el tooltip se renderiza como chip): `size` acepta `"small" | "medium" | "large" | "xlarge"`
+- Hereda `BoxProps` (acepta `sx`, `onClick`, etc.)
+- Ícono y subrayado punteado se tiñen con `palette.text.secondary`
+
 ### `SingleFileField` — `forms/CustomInputs.tsx`
 Campo de archivo simple (nativo):
 ```tsx
@@ -289,14 +302,20 @@ Avatar de usuario con iniciales y color generado determinísticamente del nombre
 - Iniciales: primera letra del primer nombre + primera letra del apellido
 - `nameToColor(name)` está **exportado** para reusarlo fuera del avatar (ej. `LeadComments` colorea cada comentario según su autor). Saturación/luminosidad fijas — solo varía el matiz
 
-### `DetailsMetadata` (default export) + `MetadataShort` — `details/DetailsMetadata.tsx`
-Componente de metadatos de auditoría (creación/modificación). `DetailsMetadata` versión completa con dos columnas separadas por divider vertical; `MetadataShort` versión de una línea.
-
-`DetailsMetadata` usa iconos `PERSON_OUTLINE` (`BadgeOutlined`) para el creador, `MODIFY` (`Edit`) para el último editor y `CALENDAR` (`CalendarMonth`) para las fechas — todos inline sin avatar circular, con labels en mayúscula pequeña y tipografía refinada para un look profesional y minimalista. La sección "Modificado por" solo se renderiza si `updated_at` difiere de `created_at`.
+### `DetailsMetadata` (default export) + `MetadataItem` — `details/DetailsMetadata.tsx`
+Metadatos de auditoría (creación/modificación) de cualquier entidad con forma `Metadata` (`creator`/`updater`/`created_at`/`updated_at`). Renderiza una columna "Creado por" con el avatar del usuario (`UserAvatar` con iniciales), el nombre completo (email en tooltip vía `ChipTooltip`) y la fecha formateada. La columna "Modificado por" solo se muestra si `updated_at` difiere de `created_at`. Toda la tipografía usa `CommonCRMText` (título en mayúsculas pequeñas, nombre y fecha capitalizada).
 ```tsx
 <DetailsMetadata entity={campaign} />
-<MetadataShort metadata={lead} onlyUser />
+<DetailsMetadata entity={lead} size="small" />
 ```
+- `size?: "small" | "medium"` (default `"medium"`): escala avatar (28px / 36px) y tipografía. Reemplazó al viejo prop booleano `small`
+- Si la entidad no tiene `creator` (dato cargado por el sistema), el nombre cae a "Sistema"
+
+**`MetadataItem`** — export nombrado, item individual reutilizable (lo usa `DetailsMetadata` y también `CustomTimelineItem`):
+```tsx
+<MetadataItem title="Creado por" name={creatorName} email={creator?.email} date={entity?.created_at} />
+```
+- Props: `title`, `name`, `email`, `date`, `short` (oculta el título y usa formato de fecha corta), `noIcon` (sin avatar), `size` (`"small" | "medium"`, default `"medium"`), `noHour` (fecha sin hora)
 
 ### `TitleAndActive` (default export) — `details/TitleAndActive.tsx`
 Título con avatar que indica estado activo/inactivo:

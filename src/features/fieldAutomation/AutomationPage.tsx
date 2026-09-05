@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { Can } from 'src/components/auth/Can';
 import { useUserContext } from 'src/stores/UserContext';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
@@ -14,8 +14,7 @@ import { getLeadFlowStates } from '../leadFlows/leadFlowServices/FlowService';
 import { getTeams } from '../lead/teamService';
 import { getUsersInOrg } from 'src/features/auth/userServices';
 import { getCampaign } from 'src/features/campaigns/campaignServices';
-import { getDictionaries } from 'src/services/generalService';
-import type { AutomationCompatibility } from 'src/types/shared';
+import { useDictionaryContext } from 'src/stores/DictionaryContext';
 import { showCommonErrorToast } from 'src/utils/feedback';
 import { useLoading } from 'src/hooks/useLoading';
 import GenericPaper from 'src/components/layout/container/GenericPaper';
@@ -52,6 +51,8 @@ export const AutomationPage = () => {
 
   const [readOnly, setReadOnly] = useState(isEditing && searchParams.get('edit') !== 'true');
   const effectiveReadOnly = readOnly || !canEdit
+
+  const { dictionaries } = useDictionaryContext()
   const [initialData, setInitialData] = useState<FieldAutomationDetailed | null>(null);
 
   const [fields, setFields] = useState<LeadField[]>([]);
@@ -60,7 +61,7 @@ export const AutomationPage = () => {
   // cada condición/acción (ver ConditionRow/ActionRow) -- viene del backend
   // (AUTOMATION_COMPATIBILITY_MATRIX) para no duplicar esa regla acá y que quede desactualizada
   // como pasó hasta ahora (ver comentarios en types/automation.ts, 2026-08-15).
-  const [compatibilityMatrix, setCompatibilityMatrix] = useState<AutomationCompatibility>({});
+  const compatibilityMatrix = useMemo(() => dictionaries.automation_compatibility_matrix ?? {}, [dictionaries.automation_compatibility_matrix]);
 
   const formSubmitRef = useRef<() => void>(null);
 
@@ -80,10 +81,6 @@ export const AutomationPage = () => {
     // de leads, para poder usarlos en condiciones/acciones de la automatización.
     await getLeadFields({ detailed: false, only_active: true, campaign_id: campaignId, page_size: 0 })
       .then(data => setFields([...NATIVE_LEAD_FIELDS, ...data.items]))
-      .catch(e => showCommonErrorToast(e))
-
-    getDictionaries(["automation_compatibility_matrix"])
-      .then(dict => setCompatibilityMatrix(dict.automation_compatibility_matrix ?? {}))
       .catch(e => showCommonErrorToast(e))
 
     // Opciones reales para los selectores de valor de los campos nativos tipo NATIVE_ID

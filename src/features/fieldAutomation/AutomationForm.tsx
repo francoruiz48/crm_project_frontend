@@ -151,7 +151,6 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({ initialData, onS
 
   const handleSave = useCallback(
     async (automation: FieldAutomationPost, conditions: RuleGroup) => {
-      console.log({ ...automation, conditions })
       const errors = validateAutomation(automation, conditions);
       if (errors.length > 0) {
         showToast(errors[0], "error")

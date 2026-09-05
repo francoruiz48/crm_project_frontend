@@ -1,17 +1,19 @@
-import { useCallback, useEffect, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { RegisteredTextInput } from "shared/ui/forms/CustomInputs"
 import { FormErrorMessage } from "shared/ui/forms/FormFeedback"
 import CommonButton from "shared/ui/buttons/CommonButton"
 import { useLoading } from "src/hooks/useLoading"
-import type { Role, RoleDetailed, RolePost } from "src/types/roles"
+import type { RoleDetailed, RolePost } from "src/types/roles"
 import { showCommonErrorToast, showToast } from "src/utils/feedback"
 import { setFormErrors } from "src/utils/forms"
 import { useForm } from "react-hook-form"
 import { useUserContext } from "src/stores/UserContext"
-import { ButtonGroup, Stack } from "@mui/material"
+import { ButtonGroup, Divider, Grid, Stack } from "@mui/material"
 import { SidebarContentActionsWrapper, SidebarContentWrapper } from "src/components/layout/container/GenericSidebar"
 import ACTION_ICONS from "shared/ui/icons/ActionIcons"
-import { createRole, updateRole } from "src/services/roleService"
+import { createRole, setRolePermissions, updateRole } from "src/services/roleService"
+import { PermissionForm } from "./PermissionForm"
+import { areStringArraysEqual } from "src/utils/lists"
 
 interface RoleSidebarProps {
     existingRole?: RoleDetailed,
@@ -28,26 +30,47 @@ export const RoleFormSidebar = ({ existingRole, closeSidebar, handleSidebar, upd
         else closeSidebar()
     }, [existingRole, closeSidebar, handleSidebar])
 
-    const submit = useCallback((data: RolePost) => {
+    const submit = useCallback((data: RolePost, permissionIds: string[]) => {
+        const hasRoleChanged = !existingRole || existingRole.code !== data.code || existingRole.name !== data.name
+
+
+        const hasPermissionsChanged = (!existingRole && permissionIds.length > 0) ||
+            (existingRole && !areStringArraysEqual(existingRole.permissions.map(p => p.id), permissionIds))
+
         const updateList = (res: RoleDetailed) => {
             updateEntityOnList(res)
             handleSidebar("DETAILS_ROLE", res)
         }
-        if (!existingRole) {
-            return createRole(data)
-                .then(res => {
-                    updateList(res)
-                    showToast(`El rol "${res.name}" fue creado con éxito`)
-                })
-                .catch(e => showCommonErrorToast(e))
-        } else {
-            return updateRole(data, existingRole.id!)
-                .then(res => {
-                    updateList(res)
-                    showToast(`El rol "${res.name}" fue modificado con éxito`)
-                })
-                .catch(e => showCommonErrorToast(e))
+
+        // Comprueba si ha cambiado el rol para ejecutar
+        const saveRole = (newRole: RolePost) => {
+            if (!hasRoleChanged) return Promise.resolve(existingRole) //Devuelve el role sin cambios
+            return existingRole
+                ? updateRole(newRole, existingRole.id)
+                    .then(res => res)
+                : createRole(newRole)
+                    .then(res => res)
         }
+
+        // Comprueba si han cambiado los permisos para ejecutar
+        const assignPermissions = (role: RoleDetailed) => {
+            if (!hasPermissionsChanged) return Promise.resolve(role) //Devuelve el role sin cambios
+            return setRolePermissions(role.id, permissionIds)
+                .then(newRole => newRole)
+                .catch(e => {
+                    showCommonErrorToast(e, `No se ha podido actualizar los permisos de "${role.name}"`)
+                    return role
+                })
+        }
+
+        return saveRole(data)
+            .then(assignPermissions)
+            .then(res => {
+                updateList(res)
+                showToast(`El rol "${res.name}" se ha guardado con éxito.`)
+            })
+            .catch(e => showCommonErrorToast(e, `No se ha podido guardar el rol "${data.name}"`))
+
     }, [existingRole, handleSidebar, updateEntityOnList])
 
     return <SidebarContentWrapper title={`${existingRole ? "Modificar" : "Nuevo"} Rol`}
@@ -58,8 +81,8 @@ export const RoleFormSidebar = ({ existingRole, closeSidebar, handleSidebar, upd
 }
 
 interface RoleProps {
-    existingRole?: Role | RoleDetailed,
-    submit: (data: RolePost) => Promise<void>,
+    existingRole?: RoleDetailed,
+    submit: (data: RolePost, permissionIds: string[]) => Promise<void>,
     onCancel: () => void
 }
 
@@ -77,8 +100,15 @@ export const RoleForm = ({ existingRole, submit, onCancel }: RoleProps) => {
 
     useEffect(() => { reset(defaultValues) }, [reset, defaultValues])
 
+    // La selección de permisos vive en un ref mutable (no en estado) para que al togglear
+    // un checkbox no se re-renderice todo este form: PermissionForm muta el ref internamente
+    // y dispara su propio re-render local. El valor se lee acá en el submit.
+    const selectedPermissionIdsRef = useRef<string[]>(
+        existingRole?.permissions?.map(perm => perm.id) ?? [],
+    )
+
     const onSubmit = (data: RolePost) => {
-        return submit(data)
+        return submit(data, selectedPermissionIdsRef.current)
             .catch(e => setFormErrors(e, setError))
     }
 
@@ -99,16 +129,23 @@ export const RoleForm = ({ existingRole, submit, onCancel }: RoleProps) => {
                         </CommonButton>
                     </ButtonGroup>
                 }>
+                <input type="hidden" {...register("organization_id")} />
                 <Stack spacing={2}>
-                    <input type="hidden" {...register("organization_id")} />
-                    <RegisteredTextInput name="name" register={register} label="Nombre"
-                        required errorMessage={errors.name?.message} />
-                    <RegisteredTextInput name="code" register={register} label="Código"
-                        required errorMessage={errors.code?.message} />
-                    {errors?.root &&
-                        <FormErrorMessage >{errors?.root?.message}</FormErrorMessage>
-                    }
-                </Stack>
+                    <Grid container spacing={1}>
+                        <Grid size="grow" sx={{ minWidth: "15rem" }}>
+                            <RegisteredTextInput name="name" register={register} label="Nombre"
+                                required errorMessage={errors.name?.message} />
+                        </Grid>
+                        <Grid size="grow" sx={{ minWidth: "15rem" }}>
+                            <RegisteredTextInput name="code" register={register} label="Código"
+                                required errorMessage={errors.code?.message} />
+                        </Grid>
+                        {errors?.root &&
+                            <FormErrorMessage >{errors?.root?.message}</FormErrorMessage>
+                        }
+                    </Grid>
+                    <Divider />
+                    <PermissionForm initialSelectedIds={existingRole?.permissions?.map(perm => perm.id) ?? []} selectedPermissionIdsRef={selectedPermissionIdsRef} />                </Stack>
             </SidebarContentActionsWrapper>
         </form>
     )

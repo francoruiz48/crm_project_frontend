@@ -114,6 +114,7 @@ Todavía no hay framework de tests configurado.
 - Usar los wrappers controlados existentes (ControlledAutocomplete, etc.) en lugar de cablear inputs MUI directamente con register/Controller
 - Los errores de API se muestran mediante los helpers de toast en src/utils/feedback.ts — no agregar alert() ni estados de error inline a menos que el patrón no aplique
 - Usar tokens de color del tema (`theme.palette`) en lugar de valores de color hardcodeados. Si el color viene del backend, usar la utilidad `getColorShades`
+- Usar siempre los tamaños de texto definidos en `src/theme/typographyTheme` (`FONT_SIZES`, `textTheme`). En componentes MUI, preferir los `variant` tipográficos. Nunca hardcodear `fontSize`/`fontWeight` con strings literales
 - Si hay una línea o bloque de código que un desarrollador JR no entendería fácilmente, dejar un comentario corto y conciso en español explicándolo, sin emojis
 
 ## Lo que NO hacer
