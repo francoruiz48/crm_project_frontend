@@ -67,10 +67,25 @@ export interface Lead extends Metadata {
   // y el usuario actual no tiene acceso a su campaña.
   restricted?: boolean;
 }
+export interface LeadIndicators {
+  days_since_created: number;
+  days_in_current_state: number;
+  // null si el lead nunca tuvo un cambio de estado de contacto registrado (todavía no fue
+  // contactado) -- no se puede calcular.
+  days_to_first_contact: number | null;
+  interactions_count: number;
+  days_since_last_activity: number;
+  // Cantidad de veces que el lead volvio a un estado del flujo en el que ya habia estado antes.
+  back_and_forth_count: number;
+}
+
 export interface LeadDetailed extends Lead, Metadata {
   field_values: LeadFieldValueDetailed[];
   current_state: LeadStateDetailed,
   contact_state: LeadContactStateDetailed,
+  // Indicadores fijos (aún no editables) calculados en tiempo real por el backend, ver
+  // LeadService._build_lead_indicators (2026-08-15).
+  indicators?: LeadIndicators | null;
 }
 
 export interface LeadCommentPost {

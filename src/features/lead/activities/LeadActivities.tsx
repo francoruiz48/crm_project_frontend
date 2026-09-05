@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { LeadComments } from './LeadComments';
 import { LeadAuditList } from './LeadAudit';
 import { useUserContext } from 'src/stores/UserContext';
-import { Box, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Box, Divider, Stack, Tab, Tabs, Typography } from '@mui/material'
 import type { LeadDetailed } from 'src/types/leads';
+import { LeadIndicators } from '../details/LeadIndicators';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -38,6 +39,8 @@ export const LeadActivities = ({ lead, reloadAudit }: { lead: LeadDetailed, relo
 
   return (
     <Stack sx={{ height: "100%" }} spacing={3}>
+      <LeadIndicators indicators={lead.indicators} />
+      {lead.indicators && <Divider sx={{ opacity: .6 }} />}
       <Typography variant="h2">Actividades</Typography>
       <Stack sx={{ height: "100%" }} spacing={2}>
         <Tabs value={openTab} onChange={(_, val) => { setOpenTab(val) }} aria-label="activities tabs">
