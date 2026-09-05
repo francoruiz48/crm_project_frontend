@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { RegisteredTextInput } from "shared/ui/forms/CustomInputs"
 import { FormErrorMessage } from "shared/ui/forms/FormFeedback"
 import CommonButton from "shared/ui/buttons/CommonButton"
@@ -100,12 +100,15 @@ export const RoleForm = ({ existingRole, submit, onCancel }: RoleProps) => {
 
     useEffect(() => { reset(defaultValues) }, [reset, defaultValues])
 
-    const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>(() =>
+    // La selección de permisos vive en un ref mutable (no en estado) para que al togglear
+    // un checkbox no se re-renderice todo este form: PermissionForm muta el ref internamente
+    // y dispara su propio re-render local. El valor se lee acá en el submit.
+    const selectedPermissionIdsRef = useRef<string[]>(
         existingRole?.permissions?.map(perm => perm.id) ?? [],
     )
 
     const onSubmit = (data: RolePost) => {
-        return submit(data, selectedPermissionIds)
+        return submit(data, selectedPermissionIdsRef.current)
             .catch(e => setFormErrors(e, setError))
     }
 
@@ -142,8 +145,7 @@ export const RoleForm = ({ existingRole, submit, onCancel }: RoleProps) => {
                         }
                     </Grid>
                     <Divider />
-                    <PermissionForm selectedPermissionIds={selectedPermissionIds} onSelectedChange={setSelectedPermissionIds} />
-                </Stack>
+                    <PermissionForm initialSelectedIds={existingRole?.permissions?.map(perm => perm.id) ?? []} selectedPermissionIdsRef={selectedPermissionIdsRef} />                </Stack>
             </SidebarContentActionsWrapper>
         </form>
     )

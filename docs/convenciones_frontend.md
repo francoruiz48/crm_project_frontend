@@ -199,7 +199,12 @@ La app usa un sistema centralizado de tipografía definido en `src/theme/typogra
 - **`TITLE_LINE_HEIGHT`** — line-height fijo para headings (`1.2`)
 - **`textTheme`** — agrupa `root`, `title` (h1-h6 con fontSize+fontWeight+lineHeight) y `variants` (body1/body2/subtitle/caption/overline/button)
 
-**Regla:** no usar `fontSize` ni `fontWeight` inline en componentes. Usar los `variant` de MUI (`h1`-`h6`, `body1`, `subtitle2`, etc.) que ya traen los valores del theme. Para texto display (títulos de stat cards, hero headers), usar `CommonCRMTitle` con `font="display"`. Para body text con tamaño personalizado, usar `CommonCRMText` con `size`.
+**Regla obligatoria:** siempre usar los tamaños de texto definidos en `typographyTheme`. Concretamente:
+1. En componentes MUI, usar los `variant` tipográficos (`h1`-`h6`, `body1`, `subtitle2`, `caption`, etc.) que ya traen los valores del theme.
+2. Para texto display (títulos de stat cards, hero headers), usar `CommonCRMTitle` con `font="display"`.
+3. Para body text con tamaño personalizado, usar `CommonCRMText` con `size`.
+4. Si ninguna de las anteriores aplica, importar `FONT_SIZES` o `textTheme` de `src/theme/typographyTheme` y usar sus valores.
+5. **Nunca** usar `fontSize` ni `fontWeight` hardcodeados como strings literales (ej. `"14px"`, `"0.875rem"`, `"bold"`) en componentes. Siempre pasar por las constantes del theme para mantener la consistencia visual.
 
 ### Texto en español
 - Todo texto visible al usuario (labels, botones, toasts, mensajes de validación) va en español
