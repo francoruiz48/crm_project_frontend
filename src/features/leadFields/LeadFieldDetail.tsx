@@ -1,9 +1,7 @@
-import { useState } from 'react';
 import { useUserContext } from 'src/stores/UserContext';
 import { ValidationList } from '../validations/ValidationList';
 import { getTypeIconAndColor, LeadFieldTypeAvatar } from './LeadFieldTypeIcon';
 import { SidebarContentWrapper } from 'shared/layout/container/GenericSidebar';
-import { DisableConfirmDialog } from 'src/components/ui/feedback/ConfirmationDialog';
 import HandleActiveButton from 'shared/ui/buttons/HandleActiveButton';
 import { CustomListItem } from 'shared/ui/lists/CustomListItem';
 import DetailsMetadata from 'shared/ui/details/DetailsMetadata';
@@ -11,8 +9,6 @@ import CommonButton from 'shared/ui/buttons/CommonButton';
 import CustomChip from 'shared/ui/details/CustomChip';
 import { CodeBox } from 'shared/ui/details/CodeBox';
 import type { LeadFieldDetailed } from 'src/types/leadFields'
-import { disableLeadField, enableLeadField } from './leadFieldServices';
-import { showCommonErrorToast, showToast } from 'src/utils/feedback';
 import { Link as RouterLink } from 'react-router-dom'
 import { Stack, Typography, Divider, Link, ButtonGroup, Paper, ListItemText } from '@mui/material'
 import ROUTE_ICONS from 'src/components/ui/icons/RouteIcons';
@@ -20,14 +16,13 @@ import ROUTE_ICONS from 'src/components/ui/icons/RouteIcons';
 interface LeadFieldDetailProps {
     leadField: LeadFieldDetailed,
     handleSidebar: (mode: string, entity: LeadFieldDetailed | null) => void,
-    updateEntity: (mode: string, entity: LeadFieldDetailed) => void,
     closeSidebar: () => void,
+    handleToggle: (field: LeadFieldDetailed) => void,
     leadFieldListLength?: number,
-    leadFields?: LeadFieldDetailed[] | null,
     campaignName: string
 }
 
-export const LeadFieldDetail = ({ leadField, updateEntity, handleSidebar, closeSidebar, campaignName, leadFieldListLength = 0, leadFields }: LeadFieldDetailProps) => {
+export const LeadFieldDetail = ({ leadField, handleSidebar, closeSidebar, handleToggle, campaignName, leadFieldListLength = 0 }: LeadFieldDetailProps) => {
 
     const { hasPermission } = useUserContext()
 
@@ -36,36 +31,6 @@ export const LeadFieldDetail = ({ leadField, updateEntity, handleSidebar, closeS
     // leadFields, y nunca matcheaba: esta sección del detalle nunca se mostraba.
     const dependsOnField = leadField.depends_on_field
 
-    const handleActive = async (field: LeadFieldDetailed | null) => {
-        if (!field || !field.id) return
-        const updateActive = () => {
-            updateEntity("UPDATE_FIELD", { ...field, active: !field.active })
-            handleSidebar("KEEP", { ...field, active: !field.active })
-        }
-        if (field.active) {
-            disableLeadField(field.id)
-                .then(res => {
-                    if (res.action === "disabled") {
-                        updateActive()
-                        showToast(`El campo "${field.name}" se ha deshabilitado con éxito`)
-                    }
-                    else {
-                        updateEntity("DELETE_FIELD", leadField)
-                        closeSidebar()
-                        showToast(`El campo "${field.name}" se ha eliminado definitivamente`)
-                    }
-                })
-                .catch(e => showCommonErrorToast(e))
-        }
-        else enableLeadField(field.id).then(() => {
-            updateActive()
-            showToast(`El campo "${field.name}" se ha habilitado con éxito`)
-        })
-            .catch(e => showCommonErrorToast(e))
-    }
-
-    const [deletingField, setDeletingField] = useState<LeadFieldDetailed | null>(null)
-
     return (
         <SidebarContentWrapper subtitle={campaignName}
             title={<span>{leadField.name}</span>} active={leadField.active} icon={ROUTE_ICONS.LEADFIELD}
@@ -73,7 +38,7 @@ export const LeadFieldDetail = ({ leadField, updateEntity, handleSidebar, closeS
                 <ButtonGroup sx={{ ml: "auto" }}>
                     <CommonButton onClick={closeSidebar} actionType="CLOSE" variant="outlined" >Cerrar</CommonButton>
                     {leadFieldListLength > 1 && hasPermission(leadField.active ? "lead_field:delete" : "lead_field:update") &&
-                        <HandleActiveButton active={leadField.active} handleActive={() => setDeletingField(leadField)} />
+                        <HandleActiveButton active={leadField.active} handleActive={() => handleToggle(leadField)} />
                     }
                     {leadFieldListLength > 1 && hasPermission("lead_field:update") &&
                         <CommonButton onClick={() => handleSidebar("UPDATE_FIELD", leadField)} actionType="MODIFY" >
@@ -184,8 +149,6 @@ export const LeadFieldDetail = ({ leadField, updateEntity, handleSidebar, closeS
                     </Stack>
                 </Stack>
             </Stack >
-            <DisableConfirmDialog entity={deletingField} clearEntity={() => setDeletingField(null)} idModal='dis-field-det'
-                onConfirm={() => handleActive(deletingField)} entityTypeName="el campo" />
         </SidebarContentWrapper >
     )
 }

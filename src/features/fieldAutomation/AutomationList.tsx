@@ -7,7 +7,7 @@ import { useListPagination } from 'src/hooks/useListPagination';
 import type { FieldAutomationDetailed } from 'src/types/automation';
 import type { Campaign } from 'src/types/campaigns';
 import type { OrderSearchParams, Paginable } from 'src/types/shared';
-import { getFieldAutomations, deleteFieldAutomation } from './AutomationFieldServices';
+import { getFieldAutomations } from './AutomationFieldServices';
 import { getCampaigns } from '../campaigns/campaignServices';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Autocomplete, List, ListItemText, Stack, TextField, Typography } from '@mui/material';
@@ -16,11 +16,12 @@ import { useLoading } from 'src/hooks/useLoading';
 import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen';
 import CustomChip from 'src/components/ui/details/CustomChip';
 import { ChipTooltip } from 'src/components/ui/details/ChipTooltip';
-import { DisableConfirmDialog } from 'src/components/ui/feedback/ConfirmationDialog';
 import { useOrderSeachList } from 'src/hooks/useOrderSearchLists';
 import { OrderSearchMenu } from 'src/components/ui/lists/OrderMenu';
 import { Can } from 'src/components/auth/Can';
 import { ListAddButton } from 'src/components/ui/buttons/ExpandingButton';
+import { EntityConfirmDialog } from 'src/components/ui/feedback/EntityConfirmDialog';
+import { useEntityActionManager } from 'src/hooks/useEntityActionManager';
 
 const ORDER_AUTO_FIELDS = [
   { name: "name", label: "Orden Alfabético" },
@@ -100,15 +101,15 @@ export const AutomationList = () => {
     }
   };
 
-  const handleDelete = useCallback((auto: FieldAutomationDetailed) => {
-    return deleteFieldAutomation(auto.id).then(() => {
-      // Refrescar la lista
+  const actions = useEntityActionManager<FieldAutomationDetailed>({
+    modelName: "FieldAutomation",
+    entityTypeName: "la automatización",
+    onSuccess: () => {
+      // Refrescar la lista tras el toggle o el borrado.
+      if (!isCampaignSelected) return
       fetchAutomations(fetchPage, pageSize, selectedCampaignId)
-    })
-      .catch(e => showCommonErrorToast(e, "Error eliminando la automatización."));
-  }, [fetchPage, pageSize, selectedCampaignId, fetchAutomations])
-
-  const [deletingAuto, setDeletingAuto] = useState<FieldAutomationDetailed | null>(null)
+    },
+  })
 
   return (
     <GenericContainer>
@@ -167,10 +168,7 @@ export const AutomationList = () => {
                               to: `/automations/create?campaign=${selectedCampaignId}&duplicate_from=${auto.id}`,
                               permission: "field_automation:create"
                             },
-                            {
-                              template: "DELETE", onClick: () => setDeletingAuto(auto),
-                              permission: "field_automation:delete"
-                            },
+                            ...actions.listActionsFor(auto),
                           ]}>
                           <ListItemText
                             primary={
@@ -201,8 +199,7 @@ export const AutomationList = () => {
           }
         </Stack>
       </Stack>
-      <DisableConfirmDialog idModal='conf-delete-cmp-list' entity={deletingAuto} clearEntity={() => setDeletingAuto(null)}
-        entityTypeName="la automatización" onlyDelete onConfirm={() => handleDelete(deletingAuto!)} />
+      <EntityConfirmDialog idModal='dis-auto-list' controller={actions} />
     </GenericContainer>
   );
 };

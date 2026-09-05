@@ -1,4 +1,4 @@
-import type { DeleteResponse, FieldAutomationParams, Paginable } from "src/types/shared"
+import type { FieldAutomationParams, Paginable } from "src/types/shared"
 import type { FieldAutomation, FieldAutomationDetailed, FieldAutomationPost } from "src/types/automation"
 import axiosCRM from "src/lib/axios"
 
@@ -26,9 +26,4 @@ export const createFieldAutomation = async (body: FieldAutomationPost): Promise<
 export const updateFieldAutomation = async (body: FieldAutomationPost, id: string): Promise<FieldAutomationDetailed> => {
     const field_automation = await axiosCRM.put(`/field_automations/${id}`, body)
     return field_automation.data
-}
-
-export const deleteFieldAutomation = async (id: string): Promise<DeleteResponse> => {
-    const cmp = await axiosCRM.delete(`/field_automations/${id}`)
-    return cmp.data
 }

@@ -36,8 +36,8 @@ export interface UserContextItems {
     //Cuentas con las que se inició sesión alguna vez en este navegador (ver src/lib/accountStore.ts), para
     //poder cambiar entre ellas sin volver a loguearse.
     savedAccounts: SavedAccount[],
-    switchAccount: (userId: number) => Promise<void>,
-    removeSavedAccount: (userId: number) => Promise<void>,
+    switchAccount: (userId: string) => Promise<void>,
+    removeSavedAccount: (userId: string) => Promise<void>,
 }
 
 const UserContext = createContext<UserContextItems | undefined>(undefined)
@@ -190,7 +190,7 @@ export const UserProvider = ({ children }: { children?: ReactNode }) => {
     //Pasa a otra cuenta ya guardada (ver src/lib/accountStore.ts) sin pedir contraseña: refresca su token,
     //lo activa en tokenStore, y carga los datos/organizaciones de esa cuenta. Si su refresh token guardado
     //ya no sirve (revocado o expirado), se descarta de la lista de cuentas guardadas y se reporta el error.
-    const switchAccount = async (userId: number) => {
+    const switchAccount = async (userId: string) => {
         const account = accountStore.getAll().find(a => a.userId === userId)
         if (!account) return
         try {
@@ -211,7 +211,7 @@ export const UserProvider = ({ children }: { children?: ReactNode }) => {
 
     //Saca una cuenta de la lista de "recordadas" sin cambiarse a ella (ej un botón "quitar" en el selector
     //de cuentas). Si se intenta quitar la cuenta ACTIVA, se comporta como logout (no puede quedar a medias).
-    const removeSavedAccount = async (userId: number) => {
+    const removeSavedAccount = async (userId: string) => {
         if (userId === user?.id) return logout()
         const account = accountStore.getAll().find(a => a.userId === userId)
         accountStore.remove(userId)

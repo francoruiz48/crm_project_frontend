@@ -1,4 +1,3 @@
-import HandleActiveButton from "shared/ui/buttons/HandleActiveButton"
 import DetailsMetadata from "shared/ui/details/DetailsMetadata"
 import CommonButton from "shared/ui/buttons/CommonButton"
 import type { OrganizationDetailed } from "src/types/campaigns"
@@ -13,9 +12,8 @@ interface DetailsProps {
     entity: OrganizationDetailed | null,
     closeSidebar: () => void,
     handleSidebar: (mode: string, entity: OrganizationDetailed | null) => void,
-    handleActive: (org: OrganizationDetailed) => void
 }
-const OrganizationDetails = ({ entity, closeSidebar, handleSidebar, handleActive }: DetailsProps) => {
+const OrganizationDetails = ({ entity, closeSidebar, handleSidebar }: DetailsProps) => {
     const { activeOrg, setActiveOrg } = useUserContext()
 
     const isOrgActive = activeOrg?.id === entity?.id
@@ -30,11 +28,6 @@ const OrganizationDetails = ({ entity, closeSidebar, handleSidebar, handleActive
             actions={
                 <ButtonGroup>
                     <CommonButton onClick={closeSidebar} actionType="CLOSE" variant="outlined" >Cerrar</CommonButton>
-                    {activeOrg?.id !== entity.id &&
-                        <Can permission={entity.active ? "organization:delete" : "organization:update"}>
-                            <HandleActiveButton active={entity.active} handleActive={() => handleActive(entity)} />
-                        </Can>
-                    }
                     <Can permission="organization:update">
                         <CommonButton onClick={() => handleSidebar("UPDATE_ORG", entity)} actionType="MODIFY" >Modificar</CommonButton>
                     </Can>

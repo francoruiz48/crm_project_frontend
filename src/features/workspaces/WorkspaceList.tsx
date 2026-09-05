@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { WorkspaceFormSidebar } from './WorkspaceForms';
 import { WorkspaceDetails } from './WorkspaceDetails'
 import { CreateCampaignFormSidebar } from 'features/campaigns/CampaignForms';
-import { DisableConfirmDialog } from 'shared/ui/feedback/ConfirmationDialog';
+import { EntityConfirmDialog } from 'src/components/ui/feedback/EntityConfirmDialog';
+import { useEntityActionManager } from 'src/hooks/useEntityActionManager';
 import ContainerWithSidebar from 'shared/layout/container/GenericContainer';
 import PaginationComponent from 'shared/ui/lists/PaginationComponent';
 import LoadingScreenWrapper from 'shared/ui/feedback/LoadingScreen';
@@ -17,8 +18,8 @@ import { useSidebar } from 'src/hooks/useSidebar';
 import { useLoading } from 'src/hooks/useLoading';
 import type { CampaignDetailed, WorkspaceDetailed } from 'src/types/campaigns'
 import type { Paginable } from 'src/types/shared'
-import { disableWorkspace, enableWorkspace, getWorkspace, getWorkspaces } from './workspaceServices'
-import { showCommonErrorToast, showToast } from 'src/utils/feedback';
+import { getWorkspace, getWorkspaces } from './workspaceServices'
+import { showCommonErrorToast } from 'src/utils/feedback';
 import { useUserContext } from 'src/stores/UserContext';
 import { Can } from 'src/components/auth/Can';
 import { useSearchParams } from 'react-router-dom';
@@ -90,52 +91,27 @@ export const WorkspaceList = () => {
         }
     }, [closeSidebar, pageSize, selectedEntity, workspaces])
 
-    const handleActive = useCallback(async (wsp: WorkspaceDetailed | null) => {
-        if (!wsp) return
-        const updateActive = (wsp: WorkspaceDetailed) => {
-            updateEntityOnList({ ...wsp, active: !wsp.active }, "UPDATE_WSP")
-            if (selectedEntity?.id === wsp.id) {
-                handleSidebar("KEEP", { ...selectedEntity, active: !wsp.active })
-            }
-        }
-        const deleteWsp = (org: WorkspaceDetailed) => {
-            updateEntityOnList(org, "DELETE_WSP")
-            if (selectedEntity?.id === org.id) {
-                closeSidebar()
-            }
-        }
-        if (wsp.active) {
-            return disableWorkspace(wsp.id!).then((res) => {
-                if (res.action === "disabled") {
-                    updateActive(wsp)
-                    showToast(`El espacio de trabajo "${wsp.name}" ha sido deshabilitado con éxito`)
-                }
-                if (res.action === "deleted") {
-                    deleteWsp(wsp)
-                    showToast(`El espacio de trabajo "${wsp.name}" ha sido eliminado definitivamente`)
-                }
-            })
-                .catch(e => showCommonErrorToast(e))
-        } else {
-            return enableWorkspace(wsp.id!).then(() => {
-                updateActive(wsp)
-                showToast(`El espacio de trabajo "${wsp.name}" ha sido habilitado con éxito`)
-            })
-                .catch(e => showCommonErrorToast(e))
-        }
-    }, [closeSidebar, handleSidebar, selectedEntity, updateEntityOnList])
-
-    const [deletingWsp, setDeletingWsp] = useState<WorkspaceDetailed | null>(null)
-    const handleDeletingWsp = (deletingWsp: WorkspaceDetailed) => {
-        setDeletingWsp(deletingWsp)
-    }
+    const actions = useEntityActionManager<WorkspaceDetailed | CampaignDetailed>({
+        modelName: "Workspace",
+        entityTypeName: "el espacio de trabajo",
+        // Workspace (E SMART_DELETE) solo expone toggle; el update optimista mantiene la lista
+        // y el sidebar sincronizados sin refetch. Se lee pendingEntity/pendingAction que
+        // todavía siguen seteados al correr onSuccess.
+        onSuccess: () => {
+            const target = actions.pendingEntity
+            if (!target) return
+            const updated = { ...target, active: actions.pendingAction === "enable" }
+            updateEntityOnList(updated, "UPDATE_WSP")
+            if (selectedEntity?.id === target.id) handleSidebar("KEEP", updated)
+        },
+    })
 
     return (
         <ContainerWithSidebar isSidebarOpen={Boolean(sidebarMode)} closeSidebar={closeSidebar} sidebarWidth='45rem'
             sidebarComponent={
                 <WorkspaceSidebar mode={sidebarMode} entity={selectedEntity} handleSidebar={handleSidebar}
                     closeSidebar={closeSidebar} updateEntityOnList={updateEntityOnList}
-                    handleActive={handleDeletingWsp} />
+                    handleActive={actions.requestToggle} />
             }>
             <Stack spacing={2}>
                 <Stack spacing={2} direction="row" useFlexGap sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
@@ -159,7 +135,7 @@ export const WorkspaceList = () => {
                                         actions={[
                                             { template: "DETAILS", onClick: () => handleSidebar("DETAILS_WSP", wsp) },
                                             { actionType: "LIST", label: "Ver Leads", onClick: () => handleSidebar("UPDATE_WSP", wsp), permission: "workspace:update" },
-                                            { template: wsp.active ? "DISABLE" : "ENABLE", onClick: () => handleDeletingWsp(wsp), permission: wsp.active ? "workspace:delete" : "workspace:update" },
+                                            ...actions.listActionsFor(wsp),
                                         ]}>
                                         <ListItemText sx={{ mr: 7 }} primary={
                                             <Stack spacing={1} direction="row">
@@ -186,8 +162,7 @@ export const WorkspaceList = () => {
                     </Stack>
                 </LoadingScreenWrapper>
             </Stack>
-            <DisableConfirmDialog idModal="del-wsp-list" entity={deletingWsp} clearEntity={() => setDeletingWsp(null)}
-                onConfirm={() => handleActive(deletingWsp)} entityTypeName='el espacio de trabajo' />
+            <EntityConfirmDialog idModal="del-wsp-list" controller={actions} />
         </ContainerWithSidebar >
     )
 }

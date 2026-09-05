@@ -14,10 +14,12 @@ import { useSidebar } from "src/hooks/useSidebar"
 import { useModal } from "src/hooks/useModal"
 import type { LeadFieldDetailed } from "src/types/leadFields"
 import type { CampaignDetailed } from "src/types/campaigns"
-import { disableBulkLeadField, disableLeadField, enableBulkLeadField, enableLeadField, getLeadField, getLeadFields, reorderLeadFields } from "./leadFieldServices"
+import { disableBulkLeadField, enableBulkLeadField, getLeadField, getLeadFields, reorderLeadFields } from "./leadFieldServices"
 import { getLeadFieldsBySectionsIds } from "./leadFieldUtils"
 import { showCommonErrorToast, showToast } from "src/utils/feedback"
 import { Can } from "src/components/auth/Can"
+import { EntityConfirmDialog } from "src/components/ui/feedback/EntityConfirmDialog"
+import { useEntityActionManager } from "src/hooks/useEntityActionManager"
 import { useUserContext } from "src/stores/UserContext"
 import { useSearchParams } from "react-router-dom"
 import { ButtonGroup, Stack, Typography } from "@mui/material"
@@ -99,32 +101,21 @@ export const LeadFieldList = memo(({ campaign, cmpSidebarMode, closeCmpSidebar }
         }
     }, [closeSidebar, selectedEntity, fetchFieldsLoad, handleSidebar, campaign.id])
 
-    const handleActive = async (field: LeadFieldDetailed | null) => {
-        if (!field || !field.id) return
-        const updateActive = () => {
-            updateEntity("UPDATE_FIELD", { ...field, active: !field.active })
-            handleSidebar("KEEP", { ...field, active: !field.active })
+    const actions = useEntityActionManager<LeadFieldDetailed>({
+        modelName: "LeadField",
+        entityTypeName: "el campo",
+        onSuccess: () => {
+            // Tras un toggle optimista la lista y el sidebar quedan sincronizados con la
+            // entidad ya actualizada (mismo patrón que WorkspaceList, ambos SMART_DELETE).
+            const target = actions.pendingEntity
+            if (!target) return
+            const updated = { ...target, active: actions.pendingAction === "enable" }
+            updateEntity("UPDATE_FIELD", updated)
+            if (selectedEntity?.id === target.id) handleSidebar("KEEP", updated)
         }
-        if (field.active) {
-            disableLeadField(field.id)
-                .then(res => {
-                    if (res.action === "disabled") {
-                        updateActive()
-                        showToast(`El campo "${field.name}" se ha deshabilitado con éxito`)
-                    }
-                    else {
-                        updateEntity("DELETE_FIELD", field)
-                        showToast(`El campo "${field.name}" se ha eliminado definitivamente`)
-                    }
-                })
-                .catch(e => showCommonErrorToast(e))
-        }
-        else enableLeadField(field.id).then(() => {
-            updateActive()
-            showToast(`El campo "${field.name}" se ha habilitado con éxito`)
-        })
-            .catch(e => showCommonErrorToast(e))
-    }
+    })
+
+    // Resto de la lógica de la lista
 
     //-----------------------------------------------Reordenamiento-----------------------------------------------
     const [isReordering, setIsReordering] = useState<boolean>(false)
@@ -260,7 +251,7 @@ export const LeadFieldList = memo(({ campaign, cmpSidebarMode, closeCmpSidebar }
             <LoadingScreenWrapper loading={fieldsLoading}>
                 {leadFields && newFieldsBySectionIds.length > 0 ?
                     <LeadFieldTableSections isReordering={isReordering} newFieldsBySectionIds={newFieldsBySectionIds} setNewFieldsBySectionIds={setNewFieldsBySectionIds}
-                        handleActive={handleActive} leadFields={leadFields} handleSidebarWrapper={handleSidebarWrapper}
+                        handleToggle={actions.requestToggle} leadFields={leadFields} handleSidebarWrapper={handleSidebarWrapper}
                         onSectionRenamed={handleSectionRenamed} openSectionIds={openSectionIds} setOpenSectionIds={setOpenSectionIds} {...checkBoxProps} />
                     :
                     <Stack spacing={2} sx={{ justifyContent: "center", alignItems: "center" }}>
@@ -273,11 +264,13 @@ export const LeadFieldList = memo(({ campaign, cmpSidebarMode, closeCmpSidebar }
             </LoadingScreenWrapper >
             <GenericSidebar isSidebarOpen={Boolean(sidebarMode)} closeSidebar={closeSidebar} >
                 <LeadFieldSidebar mode={sidebarMode} entity={selectedEntity} updateEntity={updateEntity} campaign={campaign}
-                    closeSidebar={closeSidebar} handleSidebar={handleSidebarWrapper} leadFields={leadFields} />
+                    closeSidebar={closeSidebar} handleSidebar={handleSidebarWrapper} leadFields={leadFields}
+                    handleToggle={actions.requestToggle} />
             </GenericSidebar>
             <DisableBulkConfirmDialog idModal="dis-field-bulk" isDisabling={bulkDisabling === "disable"} open={Boolean(bulkDisabling)}
                 onClose={() => setBulkDisabling(null)}
                 onConfirm={() => handleActiveBulk(bulkDisabling === "disable")} entityTypeName="los campos seleccionados" />
+            <EntityConfirmDialog idModal='dis-field-list' controller={actions} />
 
         </Stack >
     )
@@ -289,16 +282,17 @@ interface SidebarProps {
     closeSidebar: () => void,
     updateEntity: (mode: string, entity: LeadFieldDetailed) => void,
     handleSidebar: (mode: string, entity: LeadFieldDetailed | null) => void,
+    handleToggle: (entity: LeadFieldDetailed) => void,
     leadFields: LeadFieldDetailed[] | null,
     campaign: CampaignDetailed
 }
 
-const LeadFieldSidebar = ({ mode, entity, handleSidebar, closeSidebar, updateEntity, campaign, leadFields }: SidebarProps) => {
+const LeadFieldSidebar = ({ mode, entity, handleSidebar, closeSidebar, updateEntity, handleToggle, campaign, leadFields }: SidebarProps) => {
 
     const content = useMemo(() => ({
         "DETAILS_FIELD":
             <LeadFieldDetail campaignName={campaign.name} leadField={entity as LeadFieldDetailed} leadFieldListLength={leadFields?.length ?? 0}
-                leadFields={leadFields} closeSidebar={closeSidebar} handleSidebar={handleSidebar} updateEntity={updateEntity} />
+                closeSidebar={closeSidebar} handleSidebar={handleSidebar} handleToggle={handleToggle} />
         ,
         "CREATE_FIELD":
             <LeadFieldFormSidebar campaign={campaign} leadFields={leadFields} closeSidebar={closeSidebar} handleSidebar={handleSidebar}
@@ -313,7 +307,7 @@ const LeadFieldSidebar = ({ mode, entity, handleSidebar, closeSidebar, updateEnt
             updateEntityOnList={(entity) => updateEntity("UPDATE_FIELD", entity)}
             handleSidebar={handleSidebar} />
         ,
-    }), [campaign, closeSidebar, entity, handleSidebar, leadFields, mode, updateEntity])
+    }), [campaign, closeSidebar, entity, handleSidebar, handleToggle, leadFields, mode, updateEntity])
 
     const contentMode = mode as keyof typeof content
     return content[contentMode]

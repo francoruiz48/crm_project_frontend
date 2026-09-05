@@ -51,7 +51,7 @@ const HeaderMenu = memo(() => {
         handleMenuClose()
     }
 
-    const handleAccountSwitch = async (userId: number) => {
+    const handleAccountSwitch = async (userId: string) => {
         if (userId === user?.id) { handleMenuClose(); return }
         handleMenuClose()
         try {
@@ -62,7 +62,7 @@ const HeaderMenu = memo(() => {
         }
     }
 
-    const handleRemoveAccount = (e: React.MouseEvent, userId: number) => {
+    const handleRemoveAccount = (e: React.MouseEvent, userId: string) => {
         e.stopPropagation()
         removeSavedAccount(userId).catch(err => showCommonErrorToast(err, "No se pudo quitar la cuenta."))
     }

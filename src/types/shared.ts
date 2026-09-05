@@ -8,6 +8,20 @@ export interface DisableableEntity {
 }
 
 /**
+ * Config de acciones de borrado/habilitado de una entidad backend. La resuelve
+ * `getEntityActionConfig` (src/config/entityActions.ts) a partir del nombre de modelo.
+ * - prefix: ruta base expuesta por el controller (ej. "lead_routing_policies").
+ * - permissionBase: permiso real de la entidad (no siempre coincide con prefix en minúsculas).
+ * - deactivate: el controller expone DELETE /{prefix}/active/{id} (desactivación explícita).
+ *   Si es false, el toggle-off se resuelve con DELETE /{prefix}/{id} (soft-delete).
+ */
+export interface EntityActionsConfig {
+  prefix: string;
+  permissionBase: string;
+  deactivate?: boolean;
+}
+
+/**
  * Define la estructura de una lista con paginación. Se llama como: Paginable<Lead>.
  */
 export interface Paginable<T> {
@@ -32,7 +46,7 @@ export interface Metadata {
 }
 
 export interface Creator {
-  id: number;
+  id: string; // public_uuid del usuario desde Fase 3 (UserSimpleResponse). Usado para comparar contra user.id en el front.
   name: string | null;
   last_name?: string | null;
   email: string | null;
@@ -167,6 +181,19 @@ export interface LeadFilter {
   "value"?: string | number | boolean | number[] | (number | string)[]
 }
 
+/**
+ * Estrategias de borrado de cada entidad (viene de `/metadata/dictionaries`, key
+ * "entity_delete_strategies"). Definen qué acciones de borrado/deshabilitado ofrece el
+ * backend para una entidad (ver backend/AGENTS.md §7 y hallazgos_agente).
+ */
+export type DeleteStrategy =
+  | "HARD_DELETE_ALWAYS"
+  | "SOFT_DELETE_ALWAYS"
+  | "SOFT_DELETE_HARD_OPT"
+  | "PROTECTED"
+  | "SMART_DELETE"
+  | "HARD_DELETE_WITH_TOGGLE"
+
 export interface Dictionary {
   "lead_search_operators"?: DictionaryItem[]
   "routing_condition_types"?: DictionaryItem[]
@@ -176,6 +203,8 @@ export interface Dictionary {
   "automation_compatibility_matrix"?: AutomationCompatibility,
   "entities"?: Record<string, string>,
   "system_audit_log_actions"?: Record<string, string>,
+  // Mapea NombreModelo -> estrategia de borrado (Fase 4, ver hooks/useEntityDeleteActions.ts).
+  "entity_delete_strategies"?: Record<string, DeleteStrategy>,
 }
 
 export interface DictionaryItem {

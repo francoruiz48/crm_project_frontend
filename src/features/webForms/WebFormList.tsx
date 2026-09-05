@@ -8,7 +8,7 @@ import { useListPagination } from 'src/hooks/useListPagination';
 import type { WebFormDetailed } from 'src/types/webForms';
 import type { Campaign } from 'src/types/campaigns';
 import type { OrderSearchParams, Paginable } from 'src/types/shared';
-import { getWebForms, deleteWebForm } from './webFormServices';
+import { getWebForms } from './webFormServices';
 import { getCampaigns } from '../campaigns/campaignServices';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Autocomplete, List, ListItemText, Stack, TextField, Typography } from '@mui/material';
@@ -17,10 +17,11 @@ import { useLoading } from 'src/hooks/useLoading';
 import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen';
 import CustomChip from 'src/components/ui/details/CustomChip';
 import { ChipTooltip } from 'src/components/ui/details/ChipTooltip';
-import { DisableConfirmDialog } from 'src/components/ui/feedback/ConfirmationDialog';
 import { useOrderSeachList } from 'src/hooks/useOrderSearchLists';
 import { OrderSearchMenu } from 'src/components/ui/lists/OrderMenu';
 import { Can } from 'src/components/auth/Can';
+import { EntityConfirmDialog } from 'src/components/ui/feedback/EntityConfirmDialog';
+import { useEntityActionManager } from 'src/hooks/useEntityActionManager';
 
 const ORDER_WF_FIELDS = [
   { name: "name", label: "Orden Alfabético" },
@@ -99,14 +100,15 @@ export const WebFormList = () => {
     }
   };
 
-  const handleDelete = useCallback((form: WebFormDetailed) => {
-    return deleteWebForm(form.id).then(() => {
+  const actions = useEntityActionManager<WebFormDetailed>({
+    modelName: "WebForm",
+    entityTypeName: "el formulario",
+    onSuccess: () => {
+      // Recargar la página actual tras el toggle (active=true/false), para reflejar el estado.
+      if (!isCampaignSelected) return
       fetchWebForms(fetchPage, pageSize, selectedCampaignId)
-    })
-      .catch(e => showCommonErrorToast(e, "Error eliminando el formulario."));
-  }, [fetchPage, pageSize, selectedCampaignId, fetchWebForms])
-
-  const [deletingForm, setDeletingForm] = useState<WebFormDetailed | null>(null)
+    },
+  })
 
   return (
     <GenericContainer>
@@ -165,10 +167,7 @@ export const WebFormList = () => {
                               template: "MODIFY", component: Link, to: `/web_forms/${form.id}?campaign=${selectedCampaignId}&edit=true`,
                               permission: "web_form:update"
                             },
-                            {
-                              template: "DELETE", onClick: () => setDeletingForm(form),
-                              permission: "web_form:delete"
-                            },
+                            ...actions.listActionsFor(form),
                           ]}>
                           <ListItemText
                             primary={
@@ -204,8 +203,7 @@ export const WebFormList = () => {
           }
         </Stack>
       </Stack>
-      <DisableConfirmDialog idModal='conf-delete-wf-list' entity={deletingForm} clearEntity={() => setDeletingForm(null)}
-        entityTypeName="el formulario" onlyDelete onConfirm={() => handleDelete(deletingForm!)} />
+      <EntityConfirmDialog idModal='dis-wf-list' controller={actions} />
     </GenericContainer>
   );
 };

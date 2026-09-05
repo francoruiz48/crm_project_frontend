@@ -10,11 +10,11 @@ import CommonButton from 'shared/ui/buttons/CommonButton'
 import PaginationComponent from 'shared/ui/lists/PaginationComponent'
 import { CommonIconButton } from 'shared/ui/buttons/CommonIconButton'
 import { EnabledIcon } from 'shared/ui/lists/Icons'
-import { deleteLeadFlow, enableLeadFlow, getLeadFlows } from './leadFlowServices/FlowService'
+import { getLeadFlows } from './leadFlowServices/FlowService'
 import { useLoading } from 'src/hooks/useLoading'
 import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen'
-import { DisableConfirmDialog } from 'src/components/ui/feedback/ConfirmationDialog'
-import { showCommonErrorToast, showToast } from 'src/utils/feedback'
+import { EntityConfirmDialog } from 'src/components/ui/feedback/EntityConfirmDialog'
+import { useEntityActionManager } from 'src/hooks/useEntityActionManager'
 import { OrderSearchMenu } from 'shared/ui/lists/OrderMenu'
 import { useUserContext } from 'src/stores/UserContext'
 import { NoItemsMessage } from 'src/components/ui/lists/NoItemsMessage'
@@ -82,25 +82,11 @@ export const LeadFlowList = () => {
 
 export const LeadFlowListData = ({ flows, updateList }: { flows: LeadFlowDetailed[], updateList: () => Promise<void> }) => {
 
-    const [disableFlow, setDisableFlow] = useState<LeadFlowDetailed | null>(null)
-
-    const handleEnableDisable = (id: string, isActive: boolean) => {
-        if (!isActive) {
-            return enableLeadFlow(id)
-                .then(() => {
-                    showToast("Ciclo de Vida habilitado correctamente.", "success")
-                    updateList()
-                })
-                .catch(e => { showCommonErrorToast(e) })
-        }
-        return deleteLeadFlow(id)
-            .then(res => {
-                if (res.action === "disabled") showToast("Ciclo de Vida deshabilitado correctamente.", "success")
-                else showToast("Ciclo de Vida eliminado permanentemente.", "success")
-                updateList()
-            })
-            .catch(e => { showCommonErrorToast(e) })
-    }
+    const actions = useEntityActionManager<LeadFlowDetailed>({
+        modelName: "LeadFlow",
+        entityTypeName: "el ciclo de vida",
+        onSuccess: () => updateList(),
+    })
 
     return (
         <>
@@ -113,10 +99,10 @@ export const LeadFlowListData = ({ flows, updateList }: { flows: LeadFlowDetaile
                                     <CommonIconButton actionType='MODIFY' title="Editar" tooltipSize="small" size="small"
                                         component={Link} to={`/lead-flow-editor/${flow.id}`} />
                                 </Can>
-                                <Can permission={flow.active ? "lead_flow:delete" : "lead_flow:update"}>
+                                <Can permission={flow.active ? actions.deletePerm : actions.updatePerm}>
                                     <CommonIconButton actionType={flow.active ? "DISABLE" : "ENABLE"} title={flow.active ? "Deshabilitar" : "Habilitar"}
                                         tooltipSize="small" size="small" color={flow.active ? "error" : "success"}
-                                        onClick={() => setDisableFlow(flow)} />
+                                        onClick={() => actions.requestToggle(flow)} />
                                 </Can>
                             </Stack>}>
                             <ListItemButton component={Link} to={`/lead-flow-editor/${flow.id}`} sx={{ height: "100%" }} >
@@ -132,10 +118,7 @@ export const LeadFlowListData = ({ flows, updateList }: { flows: LeadFlowDetaile
                     </Grid>
                 )}
             </Grid >
-            {disableFlow &&
-                <DisableConfirmDialog idModal='conf-delete-flow' entity={disableFlow} clearEntity={() => setDisableFlow(null)} entityTypeName="el ciclo de vida"
-                    onConfirm={() => handleEnableDisable(disableFlow?.id, disableFlow?.active)} />
-            }
+            <EntityConfirmDialog idModal='conf-delete-flow' controller={actions} />
         </>
     )
 }

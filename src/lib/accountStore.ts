@@ -1,7 +1,7 @@
 const ACCOUNTS_KEY = "saved_accounts"
 
 export interface SavedAccount {
-    userId: number,
+    userId: string, // public_uuid del usuario desde Fase 3 (coincide con UserData.id)
     name: string,
     last_name: string | null,
     email: string,
@@ -47,7 +47,7 @@ export const accountStore = {
         writeAll(accounts)
     },
 
-    remove(userId: number) {
+    remove(userId: string) {
         writeAll(readAll().filter(a => a.userId !== userId))
     },
 }

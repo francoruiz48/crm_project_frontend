@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react"
 import { CreateCommentWrapper, UpdateCommentFromNote } from "./LeadCommentForm"
-import { DisableConfirmDialog } from "src/components/ui/feedback/ConfirmationDialog"
+import { EntityConfirmDialog } from "src/components/ui/feedback/EntityConfirmDialog"
+import { useEntityActionManager } from "src/hooks/useEntityActionManager"
 import PaginationComponent from "shared/ui/lists/PaginationComponent"
 import { OrderSearchMenu } from "shared/ui/lists/OrderMenu"
 import LoadingScreenWrapper from "src/components/ui/feedback/LoadingScreen"
@@ -9,8 +10,8 @@ import { useLoading } from "src/hooks/useLoading"
 import { useOrderSeachList } from "src/hooks/useOrderSearchLists"
 import type { LeadComment } from "src/types/leads"
 import type { Paginable } from "src/types/shared"
-import { deleteComment, getComments } from "./leadActivitiesService"
-import { showCommonErrorToast, showToast } from "src/utils/feedback"
+import { getComments } from "./leadActivitiesService"
+import { showCommonErrorToast } from "src/utils/feedback"
 import { alpha, Box, IconButton, Paper, Stack, Typography } from "@mui/material"
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
@@ -47,14 +48,15 @@ export const LeadComments = ({ leadId }: { leadId: string }) => {
     // autor del comentario, el owner de la organización o un superadmin pueden editarlo/eliminarlo.
     // Se replica acá para no mostrar los íconos si de todos modos el backend los va a rechazar
     // con un 403 (evita el papelón de un toast de error al primer clic).
-    const { user, activeOrg } = useUserContext()
-    const isOrgOwner = !!(activeOrg && user?.organizations_access.some(
-        a => a.organization_id === activeOrg.id && a.is_owner
-    ))
+    // Nota: la rama "owner de la organización" se quitó por deuda de Fase 3 -- organizations_access
+    // expone organization_id (id interno) y no hay forma de correlacionarlo con activeOrg.id (uuid).
+    // Esa comparación nunca matcheaba en runtime (is_owner era código muerto), así que este fichero
+    // no pierde nada; si se arregla el backend (exponer el uuid de la org), hay que reinstalarla.
+    const { user } = useUserContext()
     // Antes comparaba com.created_by === user.id. Ese campo se sacó del response por ser
     // redundante con creator, que ya trae el id del autor -- se usa ese en su lugar.
     const canModifyComment = (com: LeadComment) =>
-        !!user && (user.is_superuser || isOrgOwner || com.creator?.id === user.id)
+        !!user && (user.is_superuser || com.creator?.id === user.id)
 
     const fetchComments = useCallback(async (leadId: string, fetchPage: number, pageSize: number) => {
         if (!leadId) return
@@ -69,14 +71,6 @@ export const LeadComments = ({ leadId }: { leadId: string }) => {
         fetchComLoad(leadId, fetchPage, pageSize)
     }, [fetchComLoad, fetchPage, pageSize, leadId])
 
-    const onDeleteComment = (delId: string) => {
-        return deleteComment(delId)
-            .then(() => {
-                showToast("Comentario eliminado.")
-                fetchComments(leadId, fetchPage, pageSize)
-            })
-            .catch(e => showCommonErrorToast(e, "No se ha podido eliminar el comentario"))
-    }
     const onCreateComment = () => {
         return fetchComments(leadId, fetchPage, pageSize)
     }
@@ -89,7 +83,13 @@ export const LeadComments = ({ leadId }: { leadId: string }) => {
         setSelectedCommentId(null)
     }
 
-    const [deletingCom, setDeletingCom] = useState<LeadComment | null>(null)
+    // LeadComment es SOFT_DELETE_ALWAYS: el borrado desde la UI es un soft-delete
+    // (el ítem deja de listarse), el manager lo resuelve con el DELETE genérico.
+    const actions = useEntityActionManager<LeadComment>({
+        modelName: "LeadComment",
+        entityTypeName: "el comentario",
+        onSuccess: () => fetchComments(leadId, fetchPage, pageSize),
+    })
 
     return (
         <Stack spacing={2} sx={{ height: "100%" }}>
@@ -110,7 +110,7 @@ export const LeadComments = ({ leadId }: { leadId: string }) => {
                             com.id !== selectedCommentId ? (
                                 <CommentInstance key={com.id} comment={com}
                                     onEdit={canModifyComment(com) ? () => setSelectedCommentId(com.id) : undefined}
-                                    onDelete={canModifyComment(com) ? () => setDeletingCom(com) : undefined}>
+                                    onDelete={canModifyComment(com) ? () => actions.requestDelete(com) : undefined}>
                                     {com.content}
                                 </CommentInstance>
                             ) : (
@@ -122,8 +122,7 @@ export const LeadComments = ({ leadId }: { leadId: string }) => {
                     <PaginationComponent {...pageComponentProps} />
                 </Stack>
             </LoadingScreenWrapper>
-            <DisableConfirmDialog idModal="del-com" onConfirm={() => onDeleteComment(deletingCom!.id)} entity={deletingCom}
-                clearEntity={() => setDeletingCom(null)} entityTypeName="el comentario" onlyDelete />
+            <EntityConfirmDialog idModal="del-com" controller={actions} />
         </Stack >
     )
 }
@@ -141,7 +140,7 @@ export const CommentInstance = ({ comment, title, onEdit, onDelete, children }: 
     const author = comment?.updater ?? comment?.creator ?? null
     const authorName = formatUserFullName(author) ?? "Usuario"
     const dateText = comment ? formatDate(comment.updated_at ?? comment.created_at, "custom", "DD/MM/YYYY HH:mm") : null
-    const wasEdited = !!comment?.updated_by
+    const wasEdited = !!comment?.updated_at && comment.updated_at !== comment.created_at
     // Mismo color por autor en todos sus comentarios. Se usa solo para distinguir quién
     // escribió cada uno sin tocar el color del texto.
     const authorColor = nameToColor(authorName)

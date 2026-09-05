@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ContactStateForm } from './ContactStateForm'
-import { DisableConfirmDialog } from 'src/components/ui/feedback/ConfirmationDialog'
+import { EntityConfirmDialog } from 'src/components/ui/feedback/EntityConfirmDialog'
+import { useEntityActionManager } from 'src/hooks/useEntityActionManager'
 import PaginationComponent from 'shared/ui/lists/PaginationComponent'
 import { ResponsiveListItem } from 'shared/ui/lists/CustomListItem'
 import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen'
@@ -12,11 +13,11 @@ import { useListPagination } from 'src/hooks/useListPagination'
 import { useOrderSeachList } from 'src/hooks/useOrderSearchLists'
 import { useLoading } from 'src/hooks/useLoading'
 import type { Paginable } from 'src/types/shared'
-import { showCommonErrorToast, showToast } from 'src/utils/feedback'
+import { showCommonErrorToast } from 'src/utils/feedback'
 import { Divider, Grid, ListItemText, Stack, Typography } from '@mui/material'
 import { OrderSearchMenu } from 'shared/ui/lists/OrderMenu'
 import type { LeadContactStateDetailed } from 'src/types/orgProperties'
-import { disableLeadContactState, enableLeadContactState, getLeadContactStates } from './contactStatesServices'
+import { getLeadContactStates } from './contactStatesServices'
 import { NoItemsMessage } from 'src/components/ui/lists/NoItemsMessage'
 import { Can } from 'src/components/auth/Can'
 import { useUserContext } from 'src/stores/UserContext'
@@ -120,25 +121,11 @@ export const ContactStateListData = ({ states, toggleUpdate, updateList }: Conta
 
     const { hasPermission } = useUserContext()
 
-    const [disableState, setDisableState] = useState<LeadContactStateDetailed | null>(null)
-
-    const handleEnableDisable = useCallback((id: number, isActive: boolean) => {
-        if (!isActive) {
-            return enableLeadContactState(id)
-                .then(() => {
-                    showToast("Estado habilitado correctamente.", "success")
-                    updateList()
-                })
-                .catch(e => { showCommonErrorToast(e, "Error habilitando el estado.") })
-        }
-        return disableLeadContactState(id)
-            .then(res => {
-                if (res.action === "disabled") showToast("Estado deshabilitado correctamente.", "success")
-                else showToast("Estado eliminado permanentemente.", "success")
-                updateList()
-            })
-            .catch(e => { showCommonErrorToast(e, "Error deshabilitando el estado.") })
-    }, [updateList])
+    const actions = useEntityActionManager<LeadContactStateDetailed>({
+        modelName: "LeadContactState",
+        entityTypeName: "el estado",
+        onSuccess: () => updateList(),
+    })
 
     return (
         <>
@@ -152,10 +139,7 @@ export const ContactStateListData = ({ states, toggleUpdate, updateList }: Conta
                                     template: "MODIFY", onClick: () => toggleUpdate(state),
                                     permission: "lead_contact_state:update"
                                 },
-                                {
-                                    template: state.active ? "DISABLE" : "ENABLE", onClick: () => setDisableState(state),
-                                    permission: state.active ? "lead_contact_state:delete" : "lead_contact_state:update"
-                                },
+                                ...actions.listActionsFor(state),
                             ]}>
                             <ListItemText sx={{ mr: 4 }} primary={
                                 <Stack spacing={1} direction="row" color="inherit" sx={{ width: "100%", alignItems: "center" }}>
@@ -169,10 +153,7 @@ export const ContactStateListData = ({ states, toggleUpdate, updateList }: Conta
                     </Grid>
                 )}
             </Grid >
-            {disableState &&
-                <DisableConfirmDialog idModal='conf-delete-contact' entity={disableState} clearEntity={() => setDisableState(null)} entityTypeName="el estado"
-                    onConfirm={() => handleEnableDisable(disableState?.id, disableState?.active)} />
-            }
+            <EntityConfirmDialog idModal='conf-delete-contact' controller={actions} />
         </>
     )
 }

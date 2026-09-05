@@ -131,3 +131,28 @@ const { fetchParams, changeHandlers } = useOrderSeachList(entityName, id?, defau
 - La clave de persistencia incluye la **organización activa** (`${entityName}${id ? "_" + id : ""}_${activeOrg?.id}_filters`), así los filtros de una org no se arrastran a otra.
 - `defaultValues` opcional define el orden/búsqueda por defecto (ej. `useOrderSeachList("automations", undefined, DEFAULT_FIELDS)` para las automatizaciones).
 - Tolerante a `sessionStorage` no disponible (modo privado) y a claves corruptas: en ambos casos se trabaja solo con estado en memoria.
+
+## `useEntityDeleteActions`
+Devuelve la porción destructiva de acciones de una entidad según su estrategia de borrado (`entity_delete_strategies` del diccionario del backend). La página compone este slice con sus propias acciones (DETAILS, MODIFY, etc.):
+```tsx
+const { strategy, canToggle, canDelete, listActions } = useEntityDeleteActions({
+    modelName: "Campaign",   // key del diccionario (NombreModelo), ej. "Campaign", "Organization"
+    active: cmp.active,
+    onToggle: () => setDeletingCmp(cmp),
+    // "Campaign" → toggle; "Organization" (PROTECTED) → sin acciones destructivas
+})
+
+// En un ResponsiveListItem:
+actions={[
+    { template: "DETAILS", ... },
+    ...listActions,   // DISABLE/ENABLE y/o DELETE según la estrategia
+]}
+
+// En el detalle:
+{canToggle && hasPermission(...) && <HandleActiveButton active={...} handleActive={...} />}
+```
+- Estrategias → acciones: `HARD_DELETE_ALWAYS` → `DELETE`; `SOFT_DELETE_ALWAYS`/`SOFT_DELETE_HARD_OPT`/`SMART_DELETE` → toggle `DISABLE`/`ENABLE`; `PROTECTED` → `[]`; `HARD_DELETE_WITH_TOGGLE` → toggle + `DELETE`.
+- Sin estrategia en el diccionario → fallback conservador `SOFT_DELETE_ALWAYS` (solo toggle).
+- El toggle usa `active ? deletePermission : togglePermission` con defaults `${modelName.toLowerCase()}:delete` / `:update`.
+- `canToggle` habilita `HandleActiveButton` en el detalle; `canDelete` indica si existe borrado físico directo (`onDelete`).
+- Requiere que el componente no esté dentro de un `.map` (hooks): extraer un sub-componente por ítem si hace falta.

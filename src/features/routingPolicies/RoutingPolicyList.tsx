@@ -3,7 +3,8 @@ import { RoutingPolicyFormSidebar } from './RoutingPolicyForm'
 import { RoutingPolicyDetails } from './RoutingPolicyDetails'
 import { ResponsiveListItem } from 'shared/ui/lists/CustomListItem'
 import ContainerWithSidebar from 'shared/layout/container/GenericContainer'
-import { DisableConfirmDialog, GenericConfirmDialog } from 'src/components/ui/feedback/ConfirmationDialog'
+import { EntityConfirmDialog } from 'src/components/ui/feedback/EntityConfirmDialog'
+import { useEntityActionManager } from 'src/hooks/useEntityActionManager'
 import PaginationComponent from 'shared/ui/lists/PaginationComponent'
 import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen'
 import CommonButton from 'shared/ui/buttons/CommonButton'
@@ -17,12 +18,11 @@ import type { Team } from 'src/types/teams'
 import type { Campaign } from 'src/types/campaigns'
 import type { Paginable } from 'src/types/shared'
 import {
-    deleteRoutingPolicyForever, disableRoutingPolicy, enableRoutingPolicy,
     getRoutingPolicies, getRoutingPolicy,
 } from './routingPolicyServices'
 import { getTeams } from 'src/features/teams/teamServices'
 import { getCampaigns } from 'src/features/campaigns/campaignServices'
-import { showCommonErrorToast, showToast } from 'src/utils/feedback'
+import { showCommonErrorToast } from 'src/utils/feedback'
 import { useForm, useWatch } from 'react-hook-form'
 import { useSearchParams } from 'react-router-dom'
 import { Box, Grid, List, ListItemText, Stack, Typography } from '@mui/material'
@@ -137,27 +137,23 @@ export const RoutingPolicyList = () => {
         }
     }, [closeSidebar, refreshList, selectedEntity])
 
-    // --- Deshabilitar / Habilitar (real, no borra nada) ---
-    const [togglingPolicy, setTogglingPolicy] = useState<LeadRoutingPolicyDetailed | null>(null)
-
-    const handleToggleActive = useCallback((policy: LeadRoutingPolicyDetailed) => {
-        const action = policy.active ? disableRoutingPolicy(policy.id) : enableRoutingPolicy(policy.id)
-        return action.then(() => {
-            updateEntityOnList({ ...policy, active: !policy.active }, "UPDATE_POLICY")
-            if (selectedEntity?.id === policy.id) handleSidebar("KEEP", { ...selectedEntity, active: !policy.active })
-            showToast(`"${policy.name}" ${policy.active ? "deshabilitada" : "habilitada"} con éxito.`)
-        }).catch(e => showCommonErrorToast(e))
-    }, [handleSidebar, selectedEntity, updateEntityOnList])
-
-    // --- Eliminar definitivamente (borrado físico, irreversible) ---
-    const [deletingPolicy, setDeletingPolicy] = useState<LeadRoutingPolicyDetailed | null>(null)
-
-    const handleDeleteForever = useCallback((policy: LeadRoutingPolicyDetailed) => {
-        return deleteRoutingPolicyForever(policy.id).then(() => {
-            updateEntityOnList(policy, "DELETE_POLICY")
-            showToast(`"${policy.name}" eliminada definitivamente.`)
-        }).catch(e => showCommonErrorToast(e))
-    }, [updateEntityOnList])
+    const actions = useEntityActionManager<LeadRoutingPolicyDetailed>({
+        modelName: "LeadRoutingPolicy",
+        entityTypeName: "la política",
+        // Mantiene la lista y el sidebar sincronizados sin depender del refetch; lee
+        // pendingEntity/pendingAction que todavía siguen seteados al correr onSuccess.
+        onSuccess: () => {
+            const target = actions.pendingEntity
+            if (!target) return
+            if (actions.pendingAction === "enable" || actions.pendingAction === "disable") {
+                const updated = { ...target, active: actions.pendingAction === "enable" }
+                updateEntityOnList(updated, "UPDATE_POLICY")
+                if (selectedEntity?.id === target.id) handleSidebar("KEEP", updated)
+            } else {
+                updateEntityOnList(target, "DELETE_POLICY")
+            }
+        },
+    })
 
     const teamName = useMemo(() => teams.find(t => t.id === teamFilterId)?.name, [teams, teamFilterId])
 
@@ -174,7 +170,7 @@ export const RoutingPolicyList = () => {
             <RoutingPolicySidebar mode={sidebarMode} entity={selectedEntity} handleSidebar={handleSidebar}
                 closeSidebar={closeSidebar} updateEntityOnList={updateEntityOnList}
                 initialCampaignId={campaignFilter ?? null}
-                handleToggleActive={setTogglingPolicy} handleDeleteForever={setDeletingPolicy} />
+                handleToggleActive={actions.requestToggle} handleDeleteForever={actions.requestDelete} />
         }>
             <Stack spacing={2}>
                 <Stack direction="row" useFlexGap spacing={2} sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
@@ -208,15 +204,7 @@ export const RoutingPolicyList = () => {
                                                     actions={[
                                                         { actionType: "DETAILS", label: 'Detalle', onClick: () => handleSidebar("DETAILS_POLICY", policy) },
                                                         { actionType: "MODIFY", label: 'Modificar', onClick: () => handleSidebar("UPDATE_POLICY", policy), permission: "lead_routing_policy:update" },
-                                                        {
-                                                            actionType: (policy.active ? "DISABLE" : "ENABLE"), label: policy.active ? "Deshabilitar" : "Habilitar",
-                                                            color: (policy.active ? "warning" : "success"), onClick: () => setTogglingPolicy(policy),
-                                                            permission: policy.active ? "lead_routing_policy:delete" : "lead_routing_policy:update",
-                                                        },
-                                                        {
-                                                            actionType: "DISABLE", label: "Eliminar definitivamente", color: "error", onClick: () => setDeletingPolicy(policy),
-                                                            permission: "lead_routing_policy:delete",
-                                                        },
+                                                        ...actions.listActionsFor(policy),
                                                     ]}>
                                                     <ListItemText primary={
                                                         <Stack spacing={.5} direction="row" sx={{ alignItems: "center" }}>
@@ -243,24 +231,7 @@ export const RoutingPolicyList = () => {
                     </Stack>
                 </LoadingScreenWrapper>
             </Stack>
-            <GenericConfirmDialog idModal='toggle-policy-list' open={Boolean(togglingPolicy)} handleClose={() => setTogglingPolicy(null)}
-                onConfirm={() => handleToggleActive(togglingPolicy!)}
-                confirmText={togglingPolicy?.active ? "Deshabilitar" : "Habilitar"}>
-                {togglingPolicy && (
-                    <>
-                        <Typography variant="h3">
-                            ¿Desea {togglingPolicy.active ? "deshabilitar" : "habilitar"} la política "{togglingPolicy.name}"?
-                        </Typography>
-                        <Typography variant="body1">
-                            {togglingPolicy.active
-                                ? "Dejará de aplicarse a los leads nuevos. Podés volver a habilitarla cuando quieras."
-                                : "Volverá a aplicarse a los leads nuevos según su prioridad."}
-                        </Typography>
-                    </>
-                )}
-            </GenericConfirmDialog>
-            <DisableConfirmDialog entity={deletingPolicy} clearEntity={() => setDeletingPolicy(null)} idModal='dis-policy-list'
-                onlyDelete onConfirm={() => handleDeleteForever(deletingPolicy!)} entityTypeName='la política' />
+            <EntityConfirmDialog idModal='dis-policy-list' controller={actions} />
         </ContainerWithSidebar >
     )
 }

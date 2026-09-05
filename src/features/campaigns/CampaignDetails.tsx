@@ -3,7 +3,7 @@ import { useUserContext } from 'src/stores/UserContext'
 import { UpdateCampaignFormSidebar } from './CampaignForms'
 import { LeadFieldList } from '../leadFields/LeadFieldList'
 import ContainerWithSidebar from 'shared/layout/container/GenericContainer'
-import { DisableConfirmDialog } from 'src/components/ui/feedback/ConfirmationDialog'
+import { EntityConfirmDialog } from 'src/components/ui/feedback/EntityConfirmDialog'
 import HandleActiveButton from 'shared/ui/buttons/HandleActiveButton'
 import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen'
 import GenericPaper from 'shared/layout/container/GenericPaper'
@@ -11,11 +11,11 @@ import DetailsMetadata from 'shared/ui/details/DetailsMetadata'
 import TitleAndActive from 'shared/ui/details/TitleAndActive'
 import CommonButton from 'shared/ui/buttons/CommonButton'
 import { useSidebar } from 'src/hooks/useSidebar'
+import { useEntityActionManager } from 'src/hooks/useEntityActionManager'
 import { useLoading } from 'src/hooks/useLoading'
 import type { CampaignDetailed } from 'src/types/campaigns'
-import { disableCampaign, enableCampaign, getCampaign } from './campaignServices'
-import { showCommonErrorToast, showToast } from 'src/utils/feedback'
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { getCampaign } from './campaignServices'
+import { Link as RouterLink, useParams } from 'react-router-dom'
 import { Typography, ButtonGroup, Link, Breadcrumbs, Stack, Chip } from '@mui/material'
 import { GenericPaperColoredSection } from 'src/components/layout/container/ColoredHeaders'
 import { LeadTitleConfigSidebar } from 'src/features/lead/leadTitleConfig/LeadTitleConfigSidebar'
@@ -29,8 +29,6 @@ export const CampaignDetails = () => {
     usePageTitle(campaign && `${campaign.name} | Detalle de Campaña`)
 
     const { sidebarMode, handleSidebar, closeSidebar } = useSidebar<CampaignDetailed>("id")
-
-    const nav = useNavigate()
 
     const fetchCmpDetails = useCallback((id: string) => (
         getCampaign(id).then(res => {
@@ -53,34 +51,13 @@ export const CampaignDetails = () => {
         return setCampaign(entity)
     }, [campaign])
 
-    const handleActiveCampaign = useCallback((campaign: CampaignDetailed) => {
-        const updateActive = () => {
-            updateCampaignData({ ...campaign, active: !campaign.active })
-        }
-        if (campaign.active) {
-            return disableCampaign(campaign.id!)
-                .then(res => {
-                    if (res.action === "disabled") {
-                        updateActive()
-                        showToast(`"${campaign.name}" deshabilitado con éxito.`)
-                    }
-                    else {
-                        nav("/campaigns")
-                        showToast(`"${campaign.name}" eliminado definitivamente.`)
-                    }
-                })
-                .catch(e => showCommonErrorToast(e))
-        } else {
-            return enableCampaign(campaign.id!)
-                .then(() => {
-                    updateActive()
-                    showToast(`"${campaign.name}" habilitado con éxito.`)
-                })
-                .catch(e => showCommonErrorToast(e))
-        }
-    }, [nav, updateCampaignData])
-
-    const [deletingCmp, setDeletingCmp] = useState<CampaignDetailed | null>(null)
+    // Acciones de deshabilitar/habilitar centralizadas (estrategia SOFT_DELETE_HARD_OPT de
+    // Campaign → toggle con desactivación explícita). Refetch del detalle al terminar.
+    const actions = useEntityActionManager<CampaignDetailed>({
+        modelName: "Campaign",
+        entityTypeName: "la campaña",
+        onSuccess: () => id && fetchCmpLoad(id),
+    })
 
     const [titleConfigOpen, setTitleConfigOpen] = useState(false)
 
@@ -130,8 +107,8 @@ export const CampaignDetails = () => {
                                                     <CommonButton component={RouterLink} variant='outlined' color="secondary" to={`/automations/?campaign=${campaign.id}`}
                                                         actionType="AUTOMATE" onlyTooltip>Automatizaciones</CommonButton>
                                                 }
-                                                {hasPermission(campaign.active ? "campaign:delete" : "campaign:update") &&
-                                                    <HandleActiveButton active={campaign.active} handleActive={() => setDeletingCmp(campaign)} onlyTooltip />
+                                                {actions.canToggle && hasPermission(campaign.active ? actions.deletePerm : actions.updatePerm) &&
+                                                    <HandleActiveButton active={campaign.active} handleActive={() => actions.requestToggle(campaign)} onlyTooltip />
                                                 }
                                                 {hasPermission("campaign:update") &&
                                                     <CommonButton onClick={() => handleSidebar("UPDATE_CMP", null)} actionType="MODIFY" onlyTooltip>Modificar</CommonButton>
@@ -151,8 +128,7 @@ export const CampaignDetails = () => {
                             <LeadFieldList campaign={campaign} cmpSidebarMode={sidebarMode} closeCmpSidebar={closeSidebar} />
                         </GenericPaper>}
                 </Stack>
-                <DisableConfirmDialog idModal='conf-delete-cmp-det' entity={deletingCmp} clearEntity={() => setDeletingCmp(null)} entityTypeName="la campaña"
-                    onConfirm={() => handleActiveCampaign(deletingCmp!)} />
+                <EntityConfirmDialog idModal="conf-delete-cmp-det" controller={actions} />
                 <LeadTitleConfigSidebar open={titleConfigOpen} onClose={() => setTitleConfigOpen(false)} campaignId={campaign?.id} />
             </ContainerWithSidebar >
         </LoadingScreenWrapper >

@@ -2,7 +2,7 @@ import type {
     LeadField, LeadFieldDetailed, LeadFieldPost, LeadFieldType, LeadFieldTypeDetailed, LeadFieldTemplate,
     InputMaskTemplate, LeadFieldsReorderBody, ExcelFormulaTemplate
 } from "src/types/leadFields";
-import type { BulkDeleteResponse, BulkEnableResponse, DeleteResponse, EnableResponse, ListParams, Paginable } from "src/types/shared";
+import type { BulkDeleteResponse, BulkEnableResponse, ListParams, Paginable } from "src/types/shared";
 import { orderListByField } from "src/utils/lists";
 import axiosCRM from "src/lib/axios";
 
@@ -35,16 +35,6 @@ export const createLeadField = async (body: LeadFieldPost): Promise<LeadFieldDet
 
 export const updateLeadField = async (body: LeadFieldPost, id: string): Promise<LeadFieldDetailed> => {
     const leadField = await axiosCRM.put(`lead_fields/${id}`, body);
-    return leadField.data;
-};
-
-export const disableLeadField = async (id: string): Promise<DeleteResponse> => {
-    const leadField = await axiosCRM.delete(`lead_fields/${id}`);
-    return leadField.data;
-};
-
-export const enableLeadField = async (id: string): Promise<EnableResponse> => {
-    const leadField = await axiosCRM.put(`lead_fields/active/${id}`);
     return leadField.data;
 };
 
