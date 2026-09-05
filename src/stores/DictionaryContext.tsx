@@ -27,6 +27,7 @@ const ALL_DICT_KEYS: DictTypes[] = [
     "lead_view_visibilities",
     "automation_compatibility_matrix",
     "system_audit_log_actions",
+    "entity_delete_strategies",
 ]
 
 export const DictionaryProvider = ({ children }: { children?: ReactNode }) => {

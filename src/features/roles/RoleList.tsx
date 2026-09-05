@@ -3,7 +3,8 @@ import { RoleFormSidebar } from './RoleForms'
 import { RoleDetails } from './RoleDetails'
 import { ResponsiveListItem } from 'shared/ui/lists/CustomListItem'
 import ContainerWithSidebar from 'shared/layout/container/GenericContainer'
-import { DisableConfirmDialog } from 'src/components/ui/feedback/ConfirmationDialog'
+import { EntityConfirmDialog } from 'src/components/ui/feedback/EntityConfirmDialog'
+import { useEntityActionManager } from 'src/hooks/useEntityActionManager'
 import PaginationComponent from 'shared/ui/lists/PaginationComponent'
 import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen'
 import CommonButton from 'shared/ui/buttons/CommonButton'
@@ -12,7 +13,6 @@ import { useListPagination } from 'src/hooks/useListPagination'
 import { useSidebar } from 'src/hooks/useSidebar'
 import { useLoading } from 'src/hooks/useLoading'
 import type { Paginable } from 'src/types/shared'
-import { showCommonErrorToast, showToast } from 'src/utils/feedback'
 import { useUserContext } from 'src/stores/UserContext'
 import { Can } from 'src/components/auth/Can'
 import { useSearchParams } from 'react-router-dom'
@@ -20,7 +20,7 @@ import { Grid, List, ListItemText, Stack, Typography } from '@mui/material'
 import { useOrderSeachList } from 'src/hooks/useOrderSearchLists'
 import { OrderSearchMenu } from 'src/components/ui/lists/OrderMenu'
 import { NoItemsMessage } from 'src/components/ui/lists/NoItemsMessage'
-import { disableRole, enableRole, getRole, getRoles } from 'src/services/roleService'
+import { getRole, getRoles } from 'src/services/roleService'
 import type { RoleDetailed } from 'src/types/roles'
 import { ListAddButton } from 'src/components/ui/buttons/ExpandingButton'
 
@@ -84,51 +84,30 @@ export const RoleList = () => {
         }
     }, [closeSidebar, roles?.page, pageSize, selectedEntity, fetchRolesLoad])
 
-    const handleActive = useCallback(async (rol: RoleDetailed | null) => {
-        if (!rol) return
-        const updateActive = (rol: RoleDetailed) => {
-            updateEntityOnList({ ...rol, active: !rol.active }, "UPDATE_ROLE")
-            if (selectedEntity?.id === rol.id) {
-                handleSidebar("KEEP", { ...selectedEntity, active: !rol.active })
+    const actions = useEntityActionManager<RoleDetailed>({
+        modelName: "Role",
+        entityTypeName: "el rol",
+        // Mantiene la lista y el sidebar sincronizados sin depender del refetch; lee
+        // pendingEntity/pendingAction que todavía siguen seteados al correr onSuccess.
+        onSuccess: () => {
+            const target = actions.pendingEntity
+            if (!target) return
+            if (actions.pendingAction === "enable" || actions.pendingAction === "disable") {
+                const updated = { ...target, active: actions.pendingAction === "enable" }
+                updateEntityOnList(updated, "UPDATE_ROLE")
+                if (selectedEntity?.id === target.id) handleSidebar("KEEP", updated)
+            } else {
+                updateEntityOnList(target, "DELETE_ROLE")
+                if (selectedEntity?.id === target.id) closeSidebar()
             }
-        }
-        const deleteRol = (rol: RoleDetailed) => {
-            updateEntityOnList(rol, "DELETE_ROLE")
-            if (selectedEntity?.id === rol.id) {
-                closeSidebar()
-            }
-        }
-        if (rol.active) {
-            return disableRole(rol.id).then(res => {
-                if (res.action === "disabled") {
-                    updateActive(rol)
-                    showToast(`"${rol.name}" deshabilitado con éxito.`)
-                }
-                if (res.action === "deleted") {
-                    deleteRol(rol)
-                    showToast(`"${rol.name}" eliminado definitivamente.`)
-                }
-            })
-                .catch(e => showCommonErrorToast(e))
-        } else {
-            return enableRole(rol.id).then(() => {
-                updateActive(rol)
-                showToast(`"${rol.name}" habilitado con éxito.`)
-            })
-                .catch(e => showCommonErrorToast(e))
-        }
-    }, [closeSidebar, handleSidebar, selectedEntity, updateEntityOnList])
-
-    const [deletingRole, setDeletingRole] = useState<RoleDetailed | null>(null)
-    const handleDeletingRole = (deletingRole: RoleDetailed) => {
-        setDeletingRole(deletingRole)
-    }
+        },
+    })
 
     return (
         <ContainerWithSidebar isSidebarOpen={Boolean(sidebarMode)} closeSidebar={closeSidebar} sidebarComponent={
             <RoleSidebar mode={sidebarMode} entity={selectedEntity} handleSidebar={handleSidebar}
                 closeSidebar={closeSidebar} updateEntityOnList={updateEntityOnList}
-                handleActive={handleDeletingRole} />
+                handleActive={actions.requestToggle} />
         }>
             <Stack>
                 <Stack direction="row" useFlexGap spacing={2} sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
@@ -154,7 +133,7 @@ export const RoleList = () => {
                                                     actions={[
                                                         { template: "DETAILS", onClick: () => handleSidebar("DETAILS_ROLE", rol) },
                                                         { template: "MODIFY", onClick: () => handleSidebar("UPDATE_ROLE", rol), permission: "role:update" },
-                                                        { template: rol.active ? "DISABLE" : "ENABLE", onClick: () => handleDeletingRole(rol), permission: rol.active ? "role:delete" : "role:update" },
+                                                        ...actions.listActionsFor(rol),
                                                     ]}>
                                                     <ListItemText primary={
                                                         <Stack spacing={.5} direction="row" sx={{ alignItems: "center" }}>
@@ -187,8 +166,7 @@ export const RoleList = () => {
                     </Stack>
                 </LoadingScreenWrapper>
             </Stack>
-            <DisableConfirmDialog entity={deletingRole} clearEntity={() => setDeletingRole(null)} idModal='dis-role-list'
-                onConfirm={() => handleActive(deletingRole)} entityTypeName='el rol' />
+            <EntityConfirmDialog idModal='dis-role-list' controller={actions} />
         </ContainerWithSidebar >
     )
 }

@@ -1,5 +1,5 @@
 import type { Organization, OrganizationDetailed, OrganizationPost } from "src/types/campaigns"
-import type { DeleteResponse, EnableResponse, ListParams, Paginable } from "src/types/shared"
+import type { ListParams, Paginable } from "src/types/shared"
 import axiosCRM from "src/lib/axios"
 
 export const getOrganizations = async<T extends ListParams>(params?: T):
@@ -21,15 +21,5 @@ export const createOrganization = async (body: OrganizationPost): Promise<Organi
 
 export const updateOrganization = async (body: OrganizationPost, id: string): Promise<OrganizationDetailed> => {
     const org = await axiosCRM.put(`/organizations/${id}`, body)
-    return org.data
-}
-
-export const disableOrganization = async (id: string): Promise<DeleteResponse> => {
-    const org = await axiosCRM.delete(`/organizations/${id}`)
-    return org.data
-}
-
-export const enableOrganization = async (id: string): Promise<EnableResponse> => {
-    const org = await axiosCRM.put(`/organizations/activate/${id}`)
     return org.data
 }

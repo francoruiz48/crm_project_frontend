@@ -11,7 +11,6 @@ import { useDragAndDrop } from "src/hooks/useDragAndDrop"
 import CommonButton from "src/components/ui/buttons/CommonButton"
 import { stopPropagationEvent } from "src/utils/lists"
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore"
-import { DisableConfirmDialog } from "src/components/ui/feedback/ConfirmationDialog"
 import { getFieldsBySections } from "./leadFieldUtils"
 import { ColoredAccordionSummary } from "src/components/layout/container/ColoredHeaders"
 import GenericPaper from "src/components/layout/container/GenericPaper"
@@ -26,7 +25,7 @@ interface LeadFieldTableSectionsProps {
     leadFields: LeadFieldDetailed[]
     newFieldsBySectionIds: ReorderFieldsIds[],
     setNewFieldsBySectionIds: React.Dispatch<React.SetStateAction<ReorderFieldsIds[]>>,
-    handleActive: (field: LeadFieldDetailed | null) => Promise<void>,
+    handleToggle: (field: LeadFieldDetailed) => void,
     isReordering: boolean,
     handleSidebarWrapper: (mode: string, entity?: LeadFieldDetailed | null | undefined) => void,
     checkedItems: Map<number, LeadFieldDetailed>;
@@ -38,7 +37,7 @@ interface LeadFieldTableSectionsProps {
     setOpenSectionIds: React.Dispatch<React.SetStateAction<Set<number>>>,
 }
 
-export const LeadFieldTableSections = ({ leadFields, newFieldsBySectionIds, setNewFieldsBySectionIds, handleActive, isReordering,
+export const LeadFieldTableSections = ({ leadFields, newFieldsBySectionIds, setNewFieldsBySectionIds, handleToggle, isReordering,
     handleSidebarWrapper, checkedItems, checkedItemsArray, addItem, removeItem, openSectionIds, setOpenSectionIds, onSectionRenamed }: LeadFieldTableSectionsProps) => {
 
     const { palette } = useTheme()
@@ -79,9 +78,7 @@ export const LeadFieldTableSections = ({ leadFields, newFieldsBySectionIds, setN
             .catch(e => showCommonErrorToast(e, "No se ha podido renombrar la sección"))
     }, [editingSectionName, cancelEditingSectionName, onSectionRenamed])
 
-    // Deshabilitación de campos
-    const [deletingField, setDeletingField] = useState<LeadFieldDetailed | null>(null)
-    const handleDeletingField = useCallback((deletingField: LeadFieldDetailed) => setDeletingField(deletingField), [])
+    // Deshabilitación de campos (toggle individual delegado al manager del listado)
 
     /**Devuelve la cantidad de items seleccionados por sección */
     const checkedBySectionId = useMemo(() => {
@@ -183,7 +180,7 @@ export const LeadFieldTableSections = ({ leadFields, newFieldsBySectionIds, setN
                             <TableContainer component={Paper} elevation={4} key={`section-${section.sectId}`}>
                                 <LeadFieldTable sectLeadFields={leadFieldsData.fields} orderFieldsIds={sectFields}
                                     setOrderFieldsIds={setNewFieldsBySectionIds} sectIdx={idx} palette={palette} isReordering={isReordering}
-                                    handleSidebar={handleSidebarWrapper} setDeletingField={handleDeletingField} checkedItems={checkedItems}
+                                    handleSidebar={handleSidebarWrapper} handleToggle={handleToggle} checkedItems={checkedItems}
                                     addItem={addItem} removeItem={removeItem} />
                                 {sectFields.length > MIN_FIELDS &&
                                     <CommonButton actionType={showAll ? "MINUS" : "CREATE"} onClick={() => setShowAll(!showAll)} fullWidth>
@@ -195,8 +192,6 @@ export const LeadFieldTableSections = ({ leadFields, newFieldsBySectionIds, setN
                 )
             })
             }
-            <DisableConfirmDialog entity={deletingField} clearEntity={() => setDeletingField(null)} idModal='dis-field-det'
-                onConfirm={() => handleActive(deletingField)} entityTypeName="el campo" />
         </Box >
     )
 }
@@ -207,7 +202,7 @@ interface LeadFieldTableProps {
     setOrderFieldsIds: React.Dispatch<React.SetStateAction<ReorderFieldsIds[]>>,
     sectIdx: number,
     handleSidebar: (mode: string, entity: LeadFieldDetailed) => void,
-    setDeletingField: (field: LeadFieldDetailed) => void,
+    handleToggle: (field: LeadFieldDetailed) => void,
     isReordering: boolean,
     palette: Palette,
     checkedItems: Map<number, LeadFieldDetailed>,
@@ -217,7 +212,7 @@ interface LeadFieldTableProps {
 }
 
 export const LeadFieldTable = memo(({ sectLeadFields, orderFieldsIds, setOrderFieldsIds, sectIdx, palette,
-    isReordering = false, handleSidebar, setDeletingField, checkedItems, addItem, removeItem }: LeadFieldTableProps) => {
+    isReordering = false, handleSidebar, handleToggle, checkedItems, addItem, removeItem }: LeadFieldTableProps) => {
 
     const handleFieldChange = (fields: string[]) => {
         setOrderFieldsIds(prev => {
@@ -284,7 +279,7 @@ export const LeadFieldTable = memo(({ sectLeadFields, orderFieldsIds, setOrderFi
                                                 <Can permission={rowData.active ? "lead_field:delete" : "lead_field:update"}>
                                                     <CommonIconButton actionType={rowData.active ? "DISABLE" : "ENABLE"} tooltipSize="small" size="small"
                                                         title={rowData.active ? "Deshabilitar" : "Habilitar"}
-                                                        onClick={stopPropagationEvent(() => setDeletingField(rowData))} color={rowData.active ? "error" : "success"} />
+                                                        onClick={stopPropagationEvent(() => handleToggle(rowData))} color={rowData.active ? "error" : "success"} />
                                                 </Can>
                                             </>}
                                     </Stack>

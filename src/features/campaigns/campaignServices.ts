@@ -1,4 +1,4 @@
-import type { CampaignParams, DeleteResponse, EnableResponse, Paginable } from "src/types/shared"
+import type { CampaignParams, Paginable } from "src/types/shared"
 import type { Campaign, CampaignDetailed, CampaignPost } from "src/types/campaigns"
 import axiosCRM from "src/lib/axios"
 
@@ -27,14 +27,4 @@ export const createCampaign = async (body: CampaignPost): Promise<CampaignDetail
 export const updateCampaign = async (body: CampaignPost, id: string): Promise<CampaignDetailed> => {
     const campaign = await axiosCRM.put(`/campaigns/${id}`, body)
     return campaign.data
-}
-
-export const disableCampaign = async (id: string): Promise<DeleteResponse> => {
-    const cmp = await axiosCRM.delete(`/campaigns/${id}`)
-    return cmp.data
-}
-
-export const enableCampaign = async (id: string): Promise<EnableResponse> => {
-    const cmp = await axiosCRM.put(`/campaigns/activate/${id}`)
-    return cmp.data
 }

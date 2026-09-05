@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { DisableConfirmDialog } from 'src/components/ui/feedback/ConfirmationDialog'
+import { EntityConfirmDialog } from 'src/components/ui/feedback/EntityConfirmDialog'
+import { useEntityActionManager } from 'src/hooks/useEntityActionManager'
 import PaginationComponent from 'shared/ui/lists/PaginationComponent'
 import { ResponsiveListItem } from 'shared/ui/lists/CustomListItem'
 import LoadingScreenWrapper from 'src/components/ui/feedback/LoadingScreen'
@@ -10,12 +11,12 @@ import { useListPagination } from 'src/hooks/useListPagination'
 import { useOrderSeachList } from 'src/hooks/useOrderSearchLists'
 import { useLoading } from 'src/hooks/useLoading'
 import type { Paginable } from 'src/types/shared'
-import { showCommonErrorToast, showToast } from 'src/utils/feedback'
+import { showCommonErrorToast } from 'src/utils/feedback'
 import { Can } from 'src/components/auth/Can'
 import { Divider, Grid, ListItemText, Stack, Typography } from '@mui/material'
 import { OrderSearchMenu } from 'shared/ui/lists/OrderMenu'
 import type { LeadFieldSectionDetailed } from 'src/types/orgProperties'
-import { disableFieldSection, enableFieldSection, getFieldSections } from './fieldSectionsServices'
+import { getFieldSections } from './fieldSectionsServices'
 import { FieldSectionForm } from './FieldSectionForm'
 import { NoItemsMessage } from 'src/components/ui/lists/NoItemsMessage'
 import { useUserContext } from 'src/stores/UserContext'
@@ -119,25 +120,11 @@ const FieldSectionListData = ({ sections, toggleUpdate, updateList }: FieldSecti
 
     const { hasPermission } = useUserContext()
 
-    const [disableSection, setDisableSection] = useState<LeadFieldSectionDetailed | null>(null)
-
-    const handleEnableDisable = useCallback((id: number, isActive: boolean) => {
-        if (!isActive) {
-            return enableFieldSection(id)
-                .then(() => {
-                    showToast("Sección habilitada correctamente.", "success")
-                    updateList()
-                })
-                .catch(e => { showCommonErrorToast(e, "Error habilitando la sección.") })
-        }
-        return disableFieldSection(id)
-            .then(res => {
-                if (res.action === "disabled") showToast("Sección deshabilitada correctamente.", "success")
-                else showToast("Sección eliminada permanentemente.", "success")
-                updateList()
-            })
-            .catch(e => { showCommonErrorToast(e, "Error deshabilitando la sección.") })
-    }, [updateList])
+    const actions = useEntityActionManager<LeadFieldSectionDetailed>({
+        modelName: "LeadFieldSection",
+        entityTypeName: "la sección",
+        onSuccess: () => updateList(),
+    })
 
     return (
         <>
@@ -151,10 +138,7 @@ const FieldSectionListData = ({ sections, toggleUpdate, updateList }: FieldSecti
                                     template: "MODIFY", onClick: () => toggleUpdate(section),
                                     permission: "lead_field_section:update"
                                 },
-                                {
-                                    template: section.active ? "DISABLE" : "ENABLE", onClick: () => setDisableSection(section),
-                                    permission: section.active ? "lead_field_section:delete" : "lead_field_section:update"
-                                },
+                                ...actions.listActionsFor(section),
                             ]}>
                             <ListItemText sx={{ mr: 4 }} primary={
                                 <Stack spacing={1} direction="row" color="inherit" sx={{ width: "100%", alignItems: "center" }}>
@@ -166,10 +150,7 @@ const FieldSectionListData = ({ sections, toggleUpdate, updateList }: FieldSecti
                     </Grid>
                 )}
             </Grid >
-            {disableSection &&
-                <DisableConfirmDialog idModal='conf-delete-contact' entity={disableSection} clearEntity={() => setDisableSection(null)} entityTypeName="la sección"
-                    onConfirm={() => handleEnableDisable(disableSection?.id, disableSection?.active)} />
-            }
+            <EntityConfirmDialog idModal='conf-delete-section' controller={actions} />
         </>
     )
 }

@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { NomenclatorItemFormInline, NomenclatorItemFormSidebar } from './NomenclatorItemForm'
-import { DisableConfirmDialog } from 'shared/ui/feedback/ConfirmationDialog'
+import { EntityConfirmDialog } from 'src/components/ui/feedback/EntityConfirmDialog'
+import { useEntityActionManager } from 'src/hooks/useEntityActionManager'
 import { GenericSidebar } from 'shared/layout/container/GenericSidebar'
 import PaginationComponent from 'shared/ui/lists/PaginationComponent'
 import LoadingScreenWrapper from 'shared/ui/feedback/LoadingScreen'
@@ -14,8 +15,8 @@ import { useLoading } from 'src/hooks/useLoading'
 import { useSidebar } from 'src/hooks/useSidebar'
 import type { NomenclatorDetailed, NomenclatorItemDetailed } from 'src/types/nomenclators'
 import type { Paginable } from 'src/types/shared'
-import { disableNomenclatorItem, enableNomenclatorItem, getNomenclatorItems } from './nomenclatorService'
-import { showCommonErrorToast, showToast } from 'src/utils/feedback'
+import { getNomenclatorItems } from './nomenclatorService'
+import { showCommonErrorToast } from 'src/utils/feedback'
 import { useUserContext } from 'src/stores/UserContext'
 import { Can } from 'src/components/auth/Can'
 import { ButtonGroup, Grid, List, ListItemText, Stack, Typography } from '@mui/material'
@@ -96,44 +97,23 @@ export const NomenclatorItemList = ({ nomenclator }: { nomenclator: NomenclatorD
         }
     }, [closeSidebar, nomenclator, nomenclatorItems?.page, pageSize, selectedEntity, fetchNomItems])
 
-    const handleActive = useCallback(async (nom: NomenclatorItemDetailed | null) => {
-        if (!nom) return
-        const updateActive = (nom: NomenclatorItemDetailed) => {
-            updateEntityOnList({ ...nom, active: !nom.active }, "UPDATE_NOM")
-            if (selectedEntity?.id === nom.id) {
-                handleSidebar("KEEP", { ...selectedEntity, active: !nom.active })
+    const actions = useEntityActionManager<NomenclatorItemDetailed>({
+        modelName: "NomenclatorItem",
+        entityTypeName: "la opción",
+        // Mantiene la lista y el sidebar sincronizados sin depender del refetch; lee
+        // pendingEntity/pendingAction que todavía siguen seteados al correr onSuccess.
+        onSuccess: () => {
+            const target = actions.pendingEntity
+            if (!target) return
+            if (actions.pendingAction === "enable" || actions.pendingAction === "disable") {
+                const updated = { ...target, active: actions.pendingAction === "enable" }
+                updateEntityOnList(updated, "UPDATE_NOM")
+                if (selectedEntity?.id === target.id) handleSidebar("KEEP", updated)
+            } else {
+                updateEntityOnList(target, "DELETE_NOM")
             }
-        }
-        const deleteNom = (nom: NomenclatorItemDetailed) => {
-            updateEntityOnList(nom, "DELETE_NOM")
-            if (selectedEntity?.id === nom.id) {
-                closeSidebar()
-            }
-        }
-        if (nom.active) {
-            return disableNomenclatorItem(nom.id).then(res => {
-                if (res.action === "disabled") {
-                    updateActive(nom)
-                    showToast(`"${nom.value}" deshabilitado con éxito.`)
-                }
-                if (res.action === "deleted") {
-                    deleteNom(nom)
-                    showToast(`"${nom.value}" eliminado definitivamente.`)
-                }
-            })
-        } else {
-            return enableNomenclatorItem(nom.id).then(() => {
-                updateActive(nom)
-                showToast(`"${nom.value}" habilitado con éxito.`)
-            })
-                .catch(e => showCommonErrorToast(e))
-        }
-    }, [closeSidebar, handleSidebar, selectedEntity, updateEntityOnList])
-
-    const [deletingItem, setDeletingItem] = useState<NomenclatorItemDetailed | null>(null)
-    const handleDeletingItem = (deletingItem: NomenclatorItemDetailed) => {
-        setDeletingItem(deletingItem)
-    }
+        },
+    })
 
     const isBlocked = nomenclator.organization_id === 1 && !user?.is_superuser
 
@@ -176,7 +156,7 @@ export const NomenclatorItemList = ({ nomenclator }: { nomenclator: NomenclatorD
                                             <ResponsiveListItem disablePadding
                                                 actions={[
                                                     { template: "MODIFY", onClick: () => !hasParent ? setEditingItem(item) : handleSidebar("UPDATE_NOM", item), permission: "nomenclator_item:update" },
-                                                    { template: item.active ? "DISABLE" : "ENABLE", onClick: () => handleDeletingItem(item), permission: item.active ? "nomenclator_item:delete" : "nomenclator_item:update" },
+                                                    ...actions.listActionsFor(item),
                                                 ]}
                                                 onClick={() => !isBlocked && hasPermission("nomenclator_item:update") && (!hasParent ? setEditingItem(item) : handleSidebar("UPDATE_NOM", item))}>
                                                 <ListItemText
@@ -212,13 +192,12 @@ export const NomenclatorItemList = ({ nomenclator }: { nomenclator: NomenclatorD
                     <PaginationComponent {...pageComponentProps} />
                 </LoadingScreenWrapper >
 
-                <DisableConfirmDialog entity={deletingItem} clearEntity={() => setDeletingItem(null)} idModal='dis-nom-list' nameField='value'
-                    onConfirm={() => handleActive(deletingItem)} entityTypeName='la opción' />
+                <EntityConfirmDialog idModal='dis-nom-item-list' controller={actions} nameField='value' />
             </Stack >
             <GenericSidebar isSidebarOpen={Boolean(sidebarMode)} closeSidebar={closeSidebar}>
                 <NomenclatorItemSidebar mode={sidebarMode} entity={selectedEntity} handleSidebar={handleSidebar}
                     closeSidebar={closeSidebar} updateEntityOnList={updateEntityOnList} nomenclator={nomenclator}
-                    handleActive={handleDeletingItem} />
+                    handleActive={actions.requestToggle} />
             </GenericSidebar>
         </ >
     )

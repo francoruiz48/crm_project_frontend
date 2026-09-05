@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
-import { DisableConfirmDialog } from "shared/ui/feedback/ConfirmationDialog"
+import { EntityConfirmDialog } from "shared/ui/feedback/EntityConfirmDialog"
 import PaginationComponent from "shared/ui/lists/PaginationComponent"
 import LoadingScreenWrapper from "shared/ui/feedback/LoadingScreen"
-import { ResponsiveListItem } from "shared/ui/lists/CustomListItem"
+import { ResponsiveListItem, type ListItemAction } from "shared/ui/lists/CustomListItem"
 import { NoItemsMessage } from "shared/ui/lists/NoItemsMessage"
 import { OrderSearchMenu } from "shared/ui/lists/OrderMenu"
 import CommonButton from "shared/ui/buttons/CommonButton"
@@ -10,10 +10,10 @@ import { EnabledIcon } from "shared/ui/lists/Icons"
 import { useOrderSeachList } from "src/hooks/useOrderSearchLists"
 import { useListPagination } from "src/hooks/useListPagination"
 import { useLoading } from "src/hooks/useLoading"
+import { useEntityActionManager } from "src/hooks/useEntityActionManager"
 import type { CampaignDetailed, WorkspaceDetailed } from "src/types/campaigns"
 import type { Paginable } from "src/types/shared"
-import { disableCampaign, enableCampaign, getCampaigns } from "./campaignServices"
-import { showCommonErrorToast, showToast } from "src/utils/feedback"
+import { getCampaigns } from "./campaignServices"
 import { Link } from "react-router-dom"
 import { Grid, ListItemText, Stack, Typography } from "@mui/material"
 import { useCallback } from "react"
@@ -34,7 +34,7 @@ interface CampaignListProps {
     handleSidebar: (mode: string, entity: WorkspaceDetailed | CampaignDetailed | null) => void,
     closeSidebar: () => void
 }
-export const CampaignList = ({ workspace, handleSidebar, closeSidebar }: CampaignListProps) => {
+export const CampaignList = ({ workspace, handleSidebar }: CampaignListProps) => {
 
     const [campaigns, setCampaigns] = useState<Paginable<CampaignDetailed> | null>(null)
 
@@ -54,27 +54,13 @@ export const CampaignList = ({ workspace, handleSidebar, closeSidebar }: Campaig
         fetchLoading(workspace.id, fetchPage, pageSize)
     }, [workspace.id, fetchPage, pageSize, fetchLoading])
 
-    const handleActiveCampaign = useCallback((campaign: CampaignDetailed) => {
-        if (campaign.active) {
-            return disableCampaign(campaign.id!)
-                .then(res => {
-                    fetchLoading(workspace.id, fetchPage, pageSize)
-                    if (res.action === "disabled") showToast(`"${campaign.name}" deshabilitado con éxito.`)
-                    else {
-                        closeSidebar()
-                        showToast(`"${campaign.name}" eliminado definitivamente.`)
-                    }
-                })
-                .catch(e => showCommonErrorToast(e))
-        } else {
-            return enableCampaign(campaign.id!)
-                .then(() => {
-                    fetchLoading(workspace.id, fetchPage, pageSize)
-                    showToast(`"${campaign.name}" habilitado con éxito.`)
-                })
-                .catch(e => showCommonErrorToast(e))
-        }
-    }, [fetchLoading, fetchPage, closeSidebar, pageSize, workspace.id])
+    // Acciones de deshabilitar/habilitar centralizadas (estrategia SOFT_DELETE_HARD_OPT de
+    // Campaign → toggle con desactivación explícita). Refetch al terminar cada acción.
+    const actions = useEntityActionManager<CampaignDetailed>({
+        modelName: "Campaign",
+        entityTypeName: "la campaña",
+        onSuccess: () => fetchLoading(workspace.id, fetchPage, pageSize),
+    })
 
     return (
         <Stack spacing={2}>
@@ -90,7 +76,7 @@ export const CampaignList = ({ workspace, handleSidebar, closeSidebar }: Campaig
             <LoadingScreenWrapper loading={loading}>
                 {(campaigns?.items && campaigns.items.length > 0) ?
                     <>
-                        <CampaignListData campaigns={campaigns.items} handleActiveCampaign={handleActiveCampaign} />
+                        <CampaignListData campaigns={campaigns.items} listActionsFor={actions.listActionsFor} />
                         <PaginationComponent {...pageComponentProps} />
                     </>
                     :
@@ -102,49 +88,53 @@ export const CampaignList = ({ workspace, handleSidebar, closeSidebar }: Campaig
                     </NoItemsMessage>
                 }
             </LoadingScreenWrapper>
+            <EntityConfirmDialog idModal="conf-delete-cmp-list" controller={actions} />
         </Stack>
     )
 }
 
 interface CampaignListDataProps {
     campaigns: CampaignDetailed[],
-    handleActiveCampaign: (campaign: CampaignDetailed) => Promise<void>
+    listActionsFor: (campaign: CampaignDetailed) => ListItemAction[],
 }
-export const CampaignListData = ({ campaigns, handleActiveCampaign }: CampaignListDataProps) => {
-
-    const [deletingCmp, setDeletingCmp] = useState<CampaignDetailed | null>(null)
+export const CampaignListData = ({ campaigns, listActionsFor }: CampaignListDataProps) => {
 
     return (
         <Grid container sx={{ marginInline: 1, height: "100%" }}>
             {campaigns.map((cmp, idx) =>
                 <Grid container key={`cmp-${idx}`} size="grow" sx={{ minWidth: "15rem", alignSelf: "stretch", alignItems: "start" }}>
-                    <ResponsiveListItem disablePadding sx={{ height: "100%" }} component={Link} to={`/campaigns/${cmp.id}`}
-                        actions={
-                            [
-                                { template: "DETAILS", component: Link, to: `/campaigns/${cmp.id}` },
-                                {
-                                    actionType: "LIST", label: "Ver Leads", component: Link,
-                                    to: `/leads?workspace=${cmp.workspace_id}&campaign=${cmp.id}`, permission: "lead:view"
-                                },
-                                {
-                                    template: cmp.active ? "DISABLE" : "ENABLE", onClick: () => setDeletingCmp(cmp),
-                                    permission: cmp.active ? "campaign:delete" : "campaign:update"
-                                },
-                            ]
-                        }>
-                        <ListItemText sx={{ mr: 7 }} primary={
-                            <Stack spacing={1} direction="row" color="inherit" sx={{ width: "100%", alignItems: "center" }}>
-                                <EnabledIcon active={cmp.active} />
-                                <Typography color="inherit">{cmp.name}</Typography>
-                            </Stack>
-                        }
-                            secondary={cmp.description} />
-                    </ResponsiveListItem>
+                    <CampaignListItem cmp={cmp} listActionsFor={listActionsFor} />
                 </Grid>
             )
             }
-            <DisableConfirmDialog idModal='conf-delete-cmp-list' entity={deletingCmp} clearEntity={() => setDeletingCmp(null)} entityTypeName="la campaña"
-                onConfirm={() => handleActiveCampaign(deletingCmp!)} />
         </Grid >
+    )
+}
+
+interface CampaignListItemProps {
+    cmp: CampaignDetailed,
+    listActionsFor: (campaign: CampaignDetailed) => ListItemAction[],
+}
+const CampaignListItem = ({ cmp, listActionsFor }: CampaignListItemProps) => {
+    return (
+        <ResponsiveListItem disablePadding sx={{ height: "100%" }} component={Link} to={`/campaigns/${cmp.id}`}
+            actions={
+                [
+                    { template: "DETAILS", component: Link, to: `/campaigns/${cmp.id}` },
+                    {
+                        actionType: "LIST", label: "Ver Leads", component: Link,
+                        to: `/leads?workspace=${cmp.workspace_id}&campaign=${cmp.id}`, permission: "lead:view"
+                    },
+                    ...listActionsFor(cmp),
+                ]
+            }>
+            <ListItemText sx={{ mr: 7 }} primary={
+                <Stack spacing={1} direction="row" color="inherit" sx={{ width: "100%", alignItems: "center" }}>
+                    <EnabledIcon active={cmp.active} />
+                    <Typography color="inherit">{cmp.name}</Typography>
+                </Stack>
+            }
+                secondary={cmp.description} />
+        </ResponsiveListItem>
     )
 }
